@@ -4,7 +4,7 @@
 # 构建计划
 
 ## 第一步，gate服务搭建（进行中）
-1，支持protobuf，websocket,信息包结构初步定义包结构为
+1，支持protobuf，websocket,信息包结构初步定义为
 
     -------------------------
     | id | protobuf message |
