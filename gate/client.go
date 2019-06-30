@@ -3,6 +3,8 @@ package gate
 import (
 	"fmt"
 	"github.com/0990/goserver/network"
+	"github.com/golang/protobuf/proto"
+	"github.com/sirupsen/logrus"
 	"reflect"
 )
 
@@ -26,8 +28,15 @@ func (p *Client) ReadLoop() {
 			break
 		}
 
-		fmt.Println(string(data))
-		p.WriteMsg("hello")
+		msg, err := p.gate.Processor.Unmarshal(data)
+		if err != nil {
+			logrus.Debugf("unmarshal message error: %v", err)
+			break
+		}
+
+		p.gate.Post(func() {
+			err = p.gate.Processor.Route(msg, p)
+		})
 	}
 }
 
@@ -38,11 +47,14 @@ func (p *Client) OnClose() {
 	})
 }
 
-func (p *Client) WriteMsg(msg interface{}) {
-	str := "hello world"
-	data := []byte(str)
-	err := p.conn.WriteMsg(data)
+func (p *Client) WriteMsg(msg proto.Message) {
+	data, err := p.gate.Processor.Marshal(msg)
 	if err != nil {
-		fmt.Printf("write message %v error: %v", reflect.TypeOf(msg), err)
+		logrus.Errorf("marshal message %v error: %v", reflect.TypeOf(msg), err)
+		return
+	}
+	err = p.conn.WriteMsg(data)
+	if err != nil {
+		logrus.Error("write message %v error: %v", reflect.TypeOf(msg), err)
 	}
 }

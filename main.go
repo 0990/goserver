@@ -4,6 +4,8 @@ import (
 	"flag"
 	"fmt"
 	"github.com/0990/goserver/gate"
+	cmsg "github.com/0990/goserver/msg"
+	"github.com/golang/protobuf/proto"
 	"time"
 )
 
@@ -23,6 +25,14 @@ func main() {
 		mgr.clients[conn] = struct{}{}
 	}, func(conn *gate.Client) {
 		delete(mgr.clients, conn)
+	})
+	g.RegisterHandler(&cmsg.ReqHello{}, func(client *gate.Client, msg1 proto.Message) {
+		req := msg1.(*cmsg.ReqHello)
+		fmt.Println(req.Name)
+		resp := &cmsg.RespHello{
+			Name: "baobao",
+		}
+		client.WriteMsg(resp)
 	})
 	g.Run()
 

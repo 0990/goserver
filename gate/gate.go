@@ -1,17 +1,22 @@
 package gate
 
-import "github.com/0990/goserver/network"
+import (
+	"github.com/0990/goserver/network"
+	"github.com/golang/protobuf/proto"
+)
 
 type Gate struct {
 	WSAddr               string
 	workChan             chan func()
 	newEvent, closeEvent func(conn *Client)
+	Processor            *Processor
 }
 
 func NewGate(addr string) *Gate {
 	return &Gate{
-		WSAddr:   addr,
-		workChan: make(chan func(), 1024),
+		WSAddr:    addr,
+		workChan:  make(chan func(), 1024),
+		Processor: NewProcessor(),
 	}
 }
 
@@ -43,4 +48,14 @@ func (p *Gate) Post(f func()) {
 func (p *Gate) RegisterSessionEvent(new, close func(conn *Client)) {
 	p.newEvent = new
 	p.closeEvent = close
+}
+
+//路由服务
+func (p *Gate) Router(msg interface{}) {
+
+}
+
+func (p *Gate) RegisterHandler(msg proto.Message, f func(*Client, proto.Message)) {
+	p.Processor.Register(msg)
+	p.Processor.SetHandler(msg, f)
 }

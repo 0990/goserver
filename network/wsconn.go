@@ -23,10 +23,6 @@ func NewWSConn(conn *websocket.Conn) *WSConn {
 	return wsc
 }
 
-//func(c *WSConn)Run(){
-//	go c.writePump()
-//}
-
 func (p *WSConn) writePump() {
 	for data := range p.send {
 		if data == nil {
@@ -43,7 +39,7 @@ func (p *WSConn) writePump() {
 	p.Unlock()
 }
 
-func (p *WSConn) WriteMsg(args ...[]byte) error {
+func (p *WSConn) WriteMsg(args []byte) error {
 	p.Lock()
 	defer p.Unlock()
 
@@ -51,22 +47,24 @@ func (p *WSConn) WriteMsg(args ...[]byte) error {
 		return nil
 	}
 
-	var msgLen uint32
-	for i := 0; i < len(args); i++ {
-		msgLen += uint32(len(args[i]))
-	}
+	return p.doWrite(args)
 
-	if len(args) == 1 {
-		return p.doWrite(args[0])
-	}
-
-	msg := make([]byte, msgLen)
-	l := 0
-	for i := 0; i < len(args); i++ {
-		copy(msg[l:], args[i])
-		l += len(args[i])
-	}
-	return p.doWrite(msg)
+	//var msgLen uint32
+	//for i := 0; i < len(args); i++ {
+	//	msgLen += uint32(len(args[i]))
+	//}
+	//
+	//if len(args) == 1 {
+	//	return p.doWrite(args[0])
+	//}
+	//
+	//msg := make([]byte, msgLen)
+	//l := 0
+	//for i := 0; i < len(args); i++ {
+	//	copy(msg[l:], args[i])
+	//	l += len(args[i])
+	//}
+	//return p.doWrite(msg)
 }
 
 func (p *WSConn) doWrite(data []byte) error {
