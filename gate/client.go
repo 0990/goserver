@@ -14,10 +14,11 @@ type Client struct {
 }
 
 func NewClient(conn network.Conn, gate *Gate) *Client {
-	return &Client{
+	p := &Client{
 		conn: conn,
 		gate: gate,
 	}
+	return p
 }
 
 func (p *Client) ReadLoop() {
@@ -35,19 +36,28 @@ func (p *Client) ReadLoop() {
 		}
 
 		p.gate.Post(func() {
-			err = p.gate.Processor.Route(msg, p)
+			err = p.gate.Processor.Handle(msg, p)
 		})
 	}
+}
+
+func (p *Client) OnNew() {
+	fmt.Println("client new")
+	p.gate.Post(func() {
+		p.gate.sesid2Client[p.conn.ID()] = p
+		p.gate.newEvent(p)
+	})
 }
 
 func (p *Client) OnClose() {
 	fmt.Println("client close")
 	p.gate.Post(func() {
+		delete(p.gate.sesid2Client, p.conn.ID())
 		p.gate.closeEvent(p)
 	})
 }
 
-func (p *Client) WriteMsg(msg proto.Message) {
+func (p *Client) SendMsg(msg proto.Message) {
 	data, err := p.gate.Processor.Marshal(msg)
 	if err != nil {
 		logrus.Errorf("marshal message %v error: %v", reflect.TypeOf(msg), err)
@@ -56,5 +66,13 @@ func (p *Client) WriteMsg(msg proto.Message) {
 	err = p.conn.WriteMsg(data)
 	if err != nil {
 		logrus.Error("write message %v error: %v", reflect.TypeOf(msg), err)
+	}
+}
+
+func (p *Client) SendRawMsg(msgid uint16, data []byte) {
+	newData := p.gate.Processor.Encode(msgid, data)
+	err := p.conn.WriteMsg(newData)
+	if err != nil {
+		logrus.Error("write message error: %v", err)
 	}
 }

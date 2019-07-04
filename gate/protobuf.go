@@ -45,16 +45,16 @@ func (p *Processor) Register(msg proto.Message) {
 	return
 }
 
-func (p *Processor) SetRouter(msg proto.Message) {
-	msgID, msgType := util.ProtoHash(msg)
-	_, ok := p.msgID2Info[msgID]
-	if !ok {
-		logrus.Errorf("message %s not registered", msgType)
-		return
-	}
-	//TODO add router code
-
-}
+//func (p *Processor) SetRouter(msg proto.Message) {
+//	msgID, msgType := util.ProtoHash(msg)
+//	_, ok := p.msgID2Info[msgID]
+//	if !ok {
+//		logrus.Errorf("message %s not registered", msgType)
+//		return
+//	}
+//	//TODO add router code
+//
+//}
 
 func (p *Processor) SetHandler(msg proto.Message, msgHandler MsgHandler) {
 	msgID, msgType := util.ProtoHash(msg)
@@ -67,7 +67,7 @@ func (p *Processor) SetHandler(msg proto.Message, msgHandler MsgHandler) {
 	msgInfo.msgHandler = msgHandler
 }
 
-func (p *Processor) Route(msg proto.Message, client *Client) error {
+func (p *Processor) Handle(msg proto.Message, client *Client) error {
 	msgID, msgType := util.ProtoHash(msg)
 	msgInfo, ok := p.msgID2Info[msgID]
 	if !ok {
@@ -110,15 +110,28 @@ func (p *Processor) Marshal(msg proto.Message) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+	return p.Encode(msgID, data), nil
+	//msgIDData := make([]byte, 2)
+	//if p.littleEndian {
+	//	binary.LittleEndian.PutUint16(msgIDData, msgID)
+	//} else {
+	//	binary.BigEndian.PutUint16(msgIDData, msgID)
+	//}
+	//
+	////TODO 性能优化
+	//ret := append(msgIDData, data...)
+	//return ret, nil
+}
 
+func (p *Processor) Encode(msgid uint16, data []byte) []byte {
 	msgIDData := make([]byte, 2)
 	if p.littleEndian {
-		binary.LittleEndian.PutUint16(msgIDData, msgID)
+		binary.LittleEndian.PutUint16(msgIDData, msgid)
 	} else {
-		binary.BigEndian.PutUint16(msgIDData, msgID)
+		binary.BigEndian.PutUint16(msgIDData, msgid)
 	}
 
 	//TODO 性能优化
 	ret := append(msgIDData, data...)
-	return ret, nil
+	return ret
 }

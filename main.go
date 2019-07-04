@@ -20,19 +20,24 @@ func main() {
 		clients: make(map[*gate.Client]struct{}),
 	}
 
-	g := gate.NewGate(*addr)
+	g, err := gate.NewGate(*addr)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
 	g.RegisterSessionEvent(func(conn *gate.Client) {
 		mgr.clients[conn] = struct{}{}
 	}, func(conn *gate.Client) {
 		delete(mgr.clients, conn)
 	})
-	g.RegisterHandler(&cmsg.ReqHello{}, func(client *gate.Client, msg1 proto.Message) {
+	g.RegisterSessionHandler(&cmsg.ReqHello{}, func(client *gate.Client, msg1 proto.Message) {
 		req := msg1.(*cmsg.ReqHello)
 		fmt.Println(req.Name)
 		resp := &cmsg.RespHello{
 			Name: "baobao",
 		}
-		client.WriteMsg(resp)
+		client.SendMsg(resp)
+		g.GetServerById(101).Route(client.ReadLoop())
 	})
 	g.Run()
 

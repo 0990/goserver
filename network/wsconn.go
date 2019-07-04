@@ -14,12 +14,15 @@ type WSConn struct {
 	send chan []byte
 
 	closeFlag bool
+
+	connid int32
 }
 
-func NewWSConn(conn *websocket.Conn) *WSConn {
+func NewWSConn(conn *websocket.Conn, connid int32) *WSConn {
 	wsc := new(WSConn)
 	wsc.send = make(chan []byte, 256)
 	wsc.conn = conn
+	wsc.connid = connid
 	return wsc
 }
 
@@ -76,6 +79,10 @@ func (p *WSConn) doWrite(data []byte) error {
 func (p *WSConn) ReadMsg() ([]byte, error) {
 	_, data, err := p.conn.ReadMessage()
 	return data, err
+}
+
+func (p *WSConn) ID() int32 {
+	return p.connid
 }
 
 func (p *WSConn) Close() {

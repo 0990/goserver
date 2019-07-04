@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"sync"
+	"sync/atomic"
 )
 
 //这里可以定义handshake规则：超时时间等
@@ -12,14 +13,14 @@ var upgrader = websocket.Upgrader{} // use default options
 
 type WSServer struct {
 	sync.Mutex
-	addr  string
-	wg    sync.WaitGroup
-	conns map[*websocket.Conn]struct{}
-
-	newClient func(conn Conn) Clienter
+	addr      string
+	wg        sync.WaitGroup
+	conns     map[*websocket.Conn]struct{}
+	connid    int32
+	newClient func(conn Conn) NewClienter
 }
 
-func NewWSServer(addr string, newClient func(conn Conn) Clienter) *WSServer {
+func NewWSServer(addr string, newClient func(conn Conn) NewClienter) *WSServer {
 	return &WSServer{
 		addr:      addr,
 		newClient: newClient,
@@ -51,10 +52,12 @@ func (p *WSServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	p.conns[conn] = struct{}{}
 	p.Unlock()
 
-	wsc := NewWSConn(conn)
+	connid := p.NewConnID()
+	wsc := NewWSConn(conn, connid)
 	go wsc.writePump()
 
 	c := p.newClient(wsc)
+	c.OnNew()
 	c.ReadLoop()
 
 	wsc.Close()
@@ -62,4 +65,8 @@ func (p *WSServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	delete(p.conns, conn)
 	p.Unlock()
 	c.OnClose()
+}
+
+func (p *WSServer) NewConnID() int32 {
+	return atomic.AddInt32(&p.connid, 1)
 }
