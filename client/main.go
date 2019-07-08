@@ -2,8 +2,8 @@ package main
 
 import (
 	"flag"
-	"github.com/0990/goserver/gate"
 	cmsg "github.com/0990/goserver/msg"
+	"github.com/0990/goserver/network"
 	"github.com/gorilla/websocket"
 	"log"
 	"net/url"
@@ -13,7 +13,7 @@ import (
 )
 
 var addr = flag.String("addr", "localhost:8080", "http service address")
-var processor = gate.NewProcessor()
+var processor = network.NewProcessor()
 
 func main() {
 	flag.Parse()

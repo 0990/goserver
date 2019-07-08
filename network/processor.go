@@ -1,4 +1,4 @@
-package gate
+package network
 
 import (
 	"encoding/binary"
@@ -11,7 +11,7 @@ import (
 
 type Processor struct {
 	littleEndian bool
-	msgID2Info   map[uint16]*MsgInfo
+	msgID2Info   map[uint32]*MsgInfo
 }
 
 type MsgInfo struct {
@@ -19,12 +19,12 @@ type MsgInfo struct {
 	msgHandler MsgHandler
 }
 
-type MsgHandler func(client *Client, msg proto.Message)
+type MsgHandler func(client Session, msg proto.Message)
 
 func NewProcessor() *Processor {
 	p := new(Processor)
 	p.littleEndian = false
-	p.msgID2Info = make(map[uint16]*MsgInfo)
+	p.msgID2Info = make(map[uint32]*MsgInfo)
 	return p
 }
 
@@ -44,17 +44,6 @@ func (p *Processor) Register(msg proto.Message) {
 	p.msgID2Info[msgID] = msgInfo
 	return
 }
-
-//func (p *Processor) SetRouter(msg proto.Message) {
-//	msgID, msgType := util.ProtoHash(msg)
-//	_, ok := p.msgID2Info[msgID]
-//	if !ok {
-//		logrus.Errorf("message %s not registered", msgType)
-//		return
-//	}
-//	//TODO add router code
-//
-//}
 
 func (p *Processor) SetHandler(msg proto.Message, msgHandler MsgHandler) {
 	msgID, msgType := util.ProtoHash(msg)
@@ -87,11 +76,11 @@ func (p *Processor) Unmarshal(data []byte) (proto.Message, error) {
 		return nil, errors.New("protobuf data too short")
 	}
 
-	var msgID uint16
+	var msgID uint32
 	if p.littleEndian {
-		msgID = binary.LittleEndian.Uint16(data)
+		msgID = binary.LittleEndian.Uint32(data)
 	} else {
-		msgID = binary.BigEndian.Uint16(data)
+		msgID = binary.BigEndian.Uint32(data)
 	}
 
 	msgInfo, exist := p.msgID2Info[msgID]
@@ -123,12 +112,12 @@ func (p *Processor) Marshal(msg proto.Message) ([]byte, error) {
 	//return ret, nil
 }
 
-func (p *Processor) Encode(msgid uint16, data []byte) []byte {
-	msgIDData := make([]byte, 2)
+func (p *Processor) Encode(msgid uint32, data []byte) []byte {
+	msgIDData := make([]byte, 4)
 	if p.littleEndian {
-		binary.LittleEndian.PutUint16(msgIDData, msgid)
+		binary.LittleEndian.PutUint32(msgIDData, msgid)
 	} else {
-		binary.BigEndian.PutUint16(msgIDData, msgid)
+		binary.BigEndian.PutUint32(msgIDData, msgid)
 	}
 
 	//TODO 性能优化

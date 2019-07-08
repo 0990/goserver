@@ -1,0 +1,19 @@
+syntax = "proto3";
+package rpcmsg;
+
+message Data{
+    enum Type{
+        Invalid = 0;
+        Request = 1;
+        Response = 2;
+        Session2Server = 3;
+        Server2Session = 4;
+        Server2Server = 5;
+    }
+    Type type = 1;//数据类型
+    int32 seqid = 2; //rpc相关时有用
+    int32 sesid = 3; //ses相关时有用
+    int32 senderid = 4;//发送方serverid
+    uint32 msgid = 5;
+    bytes data = 6;
+}

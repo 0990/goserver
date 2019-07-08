@@ -2,7 +2,6 @@ package rpc
 
 import (
 	"fmt"
-	"github.com/0990/goserver/network"
 	"github.com/golang/protobuf/proto"
 )
 
@@ -20,16 +19,16 @@ type Server interface {
 	Send(proto.Message)
 	Request(proto.Message, func(proto.Message, error)) error
 	Call(proto.Message) (proto.Message, error)
-	Route(sesid int32, msg proto.Message)
+	RouteSession2Server(sesID int32, msg proto.Message)
 }
 
 type server struct {
-	rpcClient   *RPCClient
+	rpcClient   *Client
 	serverid    int32
 	serverTopic string //目标服务器nats的topic,暂为服务器id
 }
 
-func NewServer(client *RPCClient, serverid int32) Server {
+func NewServer(client *Client, serverid int32) Server {
 	return &server{
 		rpcClient:   client,
 		serverid:    serverid,
@@ -50,8 +49,9 @@ func (p *server) Call(msg proto.Message) (proto.Message, error) {
 	return p.rpcClient.Call(p.serverTopic, msg)
 }
 
-func (p *server) Route(sesid int32, msg proto.Message) {
-	p.rpcClient.Route2Server(p.serverTopic, sesid, msg)
+//gate服使用较多，把消息路由到对应服务器
+func (p *server) RouteSession2Server(sesid int32, msg proto.Message) {
+	p.rpcClient.RouteSession2Server(p.serverTopic, sesid, msg)
 }
 
 type RequestServer interface {
@@ -59,7 +59,7 @@ type RequestServer interface {
 	Server
 }
 
-func NewRequestServer(client *RPCClient, serverid int32, seqid int32) RequestServer {
+func NewRequestServer(client *Client, serverid int32, seqid int32) RequestServer {
 	s := &server{
 		rpcClient:   client,
 		serverid:    serverid,
@@ -80,26 +80,31 @@ func (p *requestserver) Answer(msg proto.Message) {
 	p.server.rpcClient.Answer(p.serverTopic, p.seqid, msg)
 }
 
-type RPCSession struct {
-	sesid        int32
-	rpcClient    *RPCClient
-	gateserverid int32
-	gateTopic    string
+type Session interface {
+	SendMsg(msg proto.Message)
+	SendRawMsg(msgID uint16, data []byte)
 }
 
-func NewRPCSession(client *RPCClient, gateserverid int32, sesid int32) network.Session {
-	return &RPCSession{
-		sesid:        sesid,
-		gateserverid: gateserverid,
-		rpcClient:    client,
-		gateTopic:    fmt.Sprintf("%v", gateserverid),
+type session struct {
+	sid       int32
+	rpcClient *Client
+	gateID    int32
+	gateTopic string
+}
+
+func NewSession(client *Client, gateID int32, sesID int32) Session {
+	return &session{
+		sid:       sesID,
+		gateID:    gateID,
+		rpcClient: client,
+		gateTopic: fmt.Sprintf("%v", gateID),
 	}
 }
 
-func (p *RPCSession) SendMsg(msg proto.Message) {
-	p.rpcClient.RouteGate(p.gateTopic, msg)
+func (p *session) SendMsg(msg proto.Message) {
+	p.rpcClient.RouteGate(p.gateTopic, p.sid, msg)
 }
 
-func (p *RPCSession) SendRawMsg(msgid uint16, data []byte) {
+func (p *session) SendRawMsg(msgID uint16, data []byte) {
 
 }

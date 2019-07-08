@@ -9,44 +9,59 @@ import (
 type RPC struct {
 	sync.Mutex
 	sid2server map[int32]Server
-	rpcClient  *RPCClient
-	serverid   int32
+	client     *Client
+	serverID   int32
 	worker     service.Worker
 }
 
-func NewRPC(serverid int32, worker service.Worker) (*RPC, error) {
-	rpcClient, err := newRPCClient(serverid)
+func NewRPC(serverID int32, worker service.Worker) (*RPC, error) {
+	rpcClient, err := newClient(serverID)
 	if err != nil {
 		return nil, err
 	}
 	p := new(RPC)
 	p.worker = worker
-	p.serverid = serverid
-	p.rpcClient = rpcClient
+	p.serverID = serverID
+	p.client = rpcClient
 	return p, nil
 }
 
+func (p *RPC) Init(serverID int32, worker service.Worker) error {
+	rpcClient, err := newClient(serverID)
+	if err != nil {
+		return err
+	}
+	p.worker = worker
+	p.serverID = serverID
+	p.client = rpcClient
+	return nil
+}
+
 func (p *RPC) Run() {
-	p.rpcClient.Run()
+	p.client.Run()
 	//p.worker.Run()
 }
 
-func (p *RPC) RegisterMsg(msg proto.Message, f MsgHandler) {
-	p.rpcClient.processor.RegisterMsg(msg, f)
+func (p *RPC) RegisterServerMsg(msg proto.Message, f ServerMsgHandler) {
+	p.client.processor.RegisterMsg(msg, f)
+}
+
+func (p *RPC) RegisterSessionMsg(msg proto.Message, f SessionMsgHandler) {
+	p.client.processor.RegisterSessionMsg(msg, f)
 }
 
 func (p *RPC) RegisterRequest(msg proto.Message, f RequestHandler) {
-	p.rpcClient.processor.RegisterRequest(msg, f)
+	p.client.processor.RegisterRequest(msg, f)
 }
 
-func (p *RPC) GetServerById(serverid int32) Server {
+func (p *RPC) GetServerById(serverID int32) Server {
 	p.Lock()
 	defer p.Unlock()
-	if v, ok := p.sid2server[serverid]; ok {
+	if v, ok := p.sid2server[serverID]; ok {
 		return v
 	}
-	s := NewServer(p.rpcClient, serverid)
-	p.sid2server[serverid] = s
+	s := NewServer(p.client, serverID)
+	p.sid2server[serverID] = s
 	return s
 }
 
@@ -55,6 +70,6 @@ func (p *RPC) GetServerByType(serverType ServerType) Server {
 	return nil
 }
 
-func (p *RPC) RegisterSend2Session(send2Session func(sesid int32, msgid uint16, data []byte)) {
-	p.rpcClient.RegisterSend2Session(send2Session)
+func (p *RPC) RegisterSend2Session(send2Session func(sesID int32, msgID uint32, data []byte)) {
+	p.client.RegisterSend2Session(send2Session)
 }

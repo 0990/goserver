@@ -6,11 +6,18 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/sirupsen/logrus"
 	"reflect"
+	"sync"
+	"sync/atomic"
 )
 
 type Processor struct {
-	msgID2Request map[uint16]*RequestInfo
-	msgID2Msg     map[uint16]*MsgInfo
+	msgID2Request    map[uint32]*RequestInfo
+	msgID2ServerMsg  map[uint32]*ServerMsgInfo
+	msgID2SessionMsg map[uint32]*SessionMsgInfo
+	msgID2Response   map[uint32]reflect.Type
+
+	seqID          int32
+	seqID2CallInfo sync.Map
 }
 
 type RequestInfo struct {
@@ -18,19 +25,27 @@ type RequestInfo struct {
 	msgHandler RequestHandler
 }
 
-type MsgInfo struct {
+type ServerMsgInfo struct {
 	msgType    reflect.Type
-	msgHandler MsgHandler
+	msgHandler ServerMsgHandler
 }
 
-type RequestHandler func(RequestServer, msg proto.Message)
+type SessionMsgInfo struct {
+	msgType    reflect.Type
+	msgHandler SessionMsgHandler
+}
 
-type MsgHandler func(Server, msg proto.Message)
+type RequestHandler func(RequestServer, proto.Message)
+type ServerMsgHandler func(Server, proto.Message)
+type SessionMsgHandler func(Session, proto.Message)
 
 func NewProcessor() *Processor {
 	p := new(Processor)
-	p.msgID2Request = make(map[uint16]*RequestInfo)
-	p.msgID2Msg = make(map[uint16]*MsgInfo)
+	p.msgID2Request = make(map[uint32]*RequestInfo)
+	p.msgID2ServerMsg = make(map[uint32]*ServerMsgInfo)
+	p.msgID2SessionMsg = make(map[uint32]*SessionMsgInfo)
+	p.msgID2Response = make(map[uint32]reflect.Type)
+
 	return p
 }
 
@@ -47,43 +62,36 @@ func (p *Processor) RegisterRequest(msg proto.Message, f RequestHandler) {
 	p.msgID2Request[msgID] = msgInfo
 }
 
-func (p *Processor) RegisterMsg(msg proto.Message, f MsgHandler) {
+func (p *Processor) RegisterMsg(msg proto.Message, f ServerMsgHandler) {
 	msgID, msgType := util.ProtoHash(msg)
-	if _, ok := p.msgID2Request[msgID]; ok {
+	if _, ok := p.msgID2ServerMsg[msgID]; ok {
 		logrus.Errorf("message %s is already registered", msgType)
 		return
 	}
 
-	msgInfo := new(MsgInfo)
+	msgInfo := new(ServerMsgInfo)
 	msgInfo.msgType = msgType
 	msgInfo.msgHandler = f
-	p.msgID2Msg[msgID] = msgInfo
+	p.msgID2ServerMsg[msgID] = msgInfo
 }
 
-func (p *Processor) decodeRequest(msgid uint16, data []byte) (proto.Message, error) {
-	msgInfo, exist := p.msgID2Request[msgid]
-	if !exist {
-		return nil, errors.New("msgID not registered")
+func (p *Processor) RegisterSessionMsg(msg proto.Message, f SessionMsgHandler) {
+	msgID, msgType := util.ProtoHash(msg)
+	if _, ok := p.msgID2SessionMsg[msgID]; ok {
+		logrus.Errorf("message %s is already registered", msgType)
+		return
 	}
 
-	msg := reflect.New(msgInfo.msgType.Elem()).Interface().(proto.Message)
-	return msg, proto.Unmarshal(data, msg.(proto.Message))
+	msgInfo := new(SessionMsgInfo)
+	msgInfo.msgType = msgType
+	msgInfo.msgHandler = f
+	p.msgID2SessionMsg[msgID] = msgInfo
 }
 
-func (p *Processor) DecodeMsg(msgid uint16, data []byte) (proto.Message, error) {
-	msgInfo, exist := p.msgID2Msg[msgid]
-	if !exist {
-		return nil, errors.New("msgID not registered")
-	}
-
-	msg := reflect.New(msgInfo.msgType.Elem()).Interface().(proto.Message)
-	return msg, proto.Unmarshal(data, msg.(proto.Message))
-}
-
-func (p *Processor) HandleRequest(server RequestServer, msgid uint16, data []byte) error {
-	msgInfo, ok := p.msgID2Request[msgid]
+func (p *Processor) HandleRequest(server RequestServer, msgID uint32, data []byte) error {
+	msgInfo, ok := p.msgID2Request[msgID]
 	if !ok {
-		logrus.Errorf("message %s not registered", msgid)
+		logrus.Errorf("message %s not registered", msgID)
 		return errors.New("msgID not registered")
 	}
 
@@ -99,10 +107,10 @@ func (p *Processor) HandleRequest(server RequestServer, msgid uint16, data []byt
 	return nil
 }
 
-func (p *Processor) HandleMsg(server Server, msgid uint16, data []byte) error {
-	msgInfo, ok := p.msgID2Msg[msgid]
+func (p *Processor) HandleMsg(server Server, msgID uint32, data []byte) error {
+	msgInfo, ok := p.msgID2ServerMsg[msgID]
 	if !ok {
-		logrus.Errorf("message %s not registered", msgid)
+		logrus.Errorf("message %s not registered", msgID)
 		return errors.New("msgID not registered")
 	}
 
@@ -116,4 +124,80 @@ func (p *Processor) HandleMsg(server Server, msgid uint16, data []byte) error {
 		msgInfo.msgHandler(server, msg)
 	}
 	return nil
+}
+
+func (p *Processor) HandleSessionMsg(session Session, msgID uint32, data []byte) error {
+	msgInfo, ok := p.msgID2SessionMsg[msgID]
+	if !ok {
+		logrus.Errorf("message %s not registered", msgID)
+		return errors.New("msgID not registered")
+	}
+
+	msg := reflect.New(msgInfo.msgType.Elem()).Interface().(proto.Message)
+	err := proto.Unmarshal(data, msg)
+	if err != nil {
+		logrus.WithError(err).Error("HandleRequest")
+		return err
+	}
+	if msgInfo.msgHandler != nil {
+		msgInfo.msgHandler(session, msg)
+	}
+	return nil
+}
+
+func (p *Processor) NewSeqID() int32 {
+	return atomic.AddInt32(&p.seqID, 1)
+}
+
+type Call struct {
+	seqID  int32
+	onRecv func(proto.Message, error)
+}
+
+func (p *Processor) RegisterCall(onRecv func(proto.Message, error)) *Call {
+	seqID := p.NewSeqID()
+	call := &Call{
+		seqID:  seqID,
+		onRecv: onRecv,
+	}
+	p.seqID2CallInfo.Store(seqID, call)
+	return call
+}
+
+func (p *Processor) GetCallWithDel(seqID int32) (*Call, bool) {
+	if v, ok := p.seqID2CallInfo.Load(seqID); ok {
+		p.seqID2CallInfo.Delete(seqID)
+		return v.(*Call), true
+	}
+	return nil, false
+}
+
+func (p *Processor) HandleResponse(seqID int32, msgID uint32, data []byte) error {
+	msgType, ok := p.msgID2Response[msgID]
+	if !ok {
+		logrus.Errorf("message %s not registered", msgID)
+		return errors.New("msgID not registered")
+	}
+
+	msg := reflect.New(msgType.Elem()).Interface().(proto.Message)
+	err := proto.Unmarshal(data, msg)
+	if err != nil {
+		logrus.WithError(err).Error("HandleRequest")
+		return err
+	}
+
+	if call, ok := p.GetCallWithDel(seqID); ok {
+		call.onRecv(msg, nil)
+	}
+	return nil
+}
+
+func (p *Processor) RegisterResponseMsg(msg proto.Message) {
+	msgID, msgType := util.ProtoHash(msg)
+	if _, ok := p.msgID2Response[msgID]; ok {
+		logrus.Errorf("message %s is already registered", msgType)
+		return
+	}
+
+	p.msgID2Response[msgID] = msgType
 }

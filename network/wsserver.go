@@ -17,10 +17,10 @@ type WSServer struct {
 	wg        sync.WaitGroup
 	conns     map[*websocket.Conn]struct{}
 	connid    int32
-	newClient func(conn Conn) NewClienter
+	newClient func(conn Conn) *Client
 }
 
-func NewWSServer(addr string, newClient func(conn Conn) NewClienter) *WSServer {
+func NewWSServer(addr string, newClient func(conn Conn) *Client) *WSServer {
 	return &WSServer{
 		addr:      addr,
 		newClient: newClient,

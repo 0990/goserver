@@ -15,9 +15,5 @@ func StringHash(s string) (hash uint16) {
 }
 
 func CRC32Hash(s string) uint32 {
-	v := crc32.ChecksumIEEE([]byte(s))
-	if v < 0 {
-		return -v
-	}
-	return v
+	return crc32.ChecksumIEEE([]byte(s))
 }
