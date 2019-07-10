@@ -2,7 +2,7 @@ package main
 
 import (
 	"flag"
-	cmsg "github.com/0990/goserver/msg"
+	cmsg "github.com/0990/goserver/example/msg"
 	"github.com/0990/goserver/network"
 	"github.com/gorilla/websocket"
 	"log"

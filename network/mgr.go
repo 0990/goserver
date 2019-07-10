@@ -25,11 +25,11 @@ func NewMgr(wsAddr string, worker service.Worker) *Mgr {
 	return p
 }
 
-func (p *Mgr) Init(wsAddr string, worker service.Worker) {
-	p.wsAddr = wsAddr
-	p.sesID2Client = make(map[int32]*Client)
-	p.worker = worker
-}
+//func (p *Mgr) Init(wsAddr string, worker service.Worker) {
+//	p.wsAddr = wsAddr
+//	p.sesID2Client = make(map[int32]*Client)
+//	p.worker = worker
+//}
 
 func (p *Mgr) Run() error {
 	//创建websocket server

@@ -15,7 +15,7 @@ type RPC struct {
 }
 
 func NewRPC(serverID int32, worker service.Worker) (*RPC, error) {
-	rpcClient, err := newClient(serverID)
+	rpcClient, err := newClient(serverID, worker)
 	if err != nil {
 		return nil, err
 	}
@@ -23,19 +23,20 @@ func NewRPC(serverID int32, worker service.Worker) (*RPC, error) {
 	p.worker = worker
 	p.serverID = serverID
 	p.client = rpcClient
+	p.sid2server = make(map[int32]Server)
 	return p, nil
 }
 
-func (p *RPC) Init(serverID int32, worker service.Worker) error {
-	rpcClient, err := newClient(serverID)
-	if err != nil {
-		return err
-	}
-	p.worker = worker
-	p.serverID = serverID
-	p.client = rpcClient
-	return nil
-}
+//func (p *RPC) Init(serverID int32, worker service.Worker) error {
+//	rpcClient, err := newClient(serverID)
+//	if err != nil {
+//		return err
+//	}
+//	p.worker = worker
+//	p.serverID = serverID
+//	p.client = rpcClient
+//	return nil
+//}
 
 func (p *RPC) Run() {
 	p.client.Run()

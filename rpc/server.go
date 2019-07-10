@@ -17,9 +17,11 @@ const (
 
 type Server interface {
 	Send(proto.Message)
-	Request(proto.Message, func(proto.Message, error)) error
-	Call(proto.Message) (proto.Message, error)
+	Call(proto.Message, proto.Message) error
 	RouteSession2Server(sesID int32, msg proto.Message)
+
+	//func(*msg.XXX, error))
+	Request(proto.Message, interface{}) error
 }
 
 type server struct {
@@ -40,13 +42,23 @@ func (p *server) Send(msg proto.Message) {
 	p.rpcClient.SendMsg(p.serverTopic, msg)
 }
 
-func (p *server) Request(msg proto.Message, f func(proto.Message, error)) error {
+//func (p *server) Request(msg proto.Message, f func(proto.Message, error)) error {
+//	p.rpcClient.Request(p.serverTopic, msg, f)
+//	return nil
+//}
+
+//func (p *server) Request(msg proto.Message, f func(proto.Message, error)) error {
+//	p.rpcClient.Request(p.serverTopic, msg, f)
+//	return nil
+//}
+
+func (p *server) Request(msg proto.Message, f interface{}) error {
 	p.rpcClient.Request(p.serverTopic, msg, f)
 	return nil
 }
 
-func (p *server) Call(msg proto.Message) (proto.Message, error) {
-	return p.rpcClient.Call(p.serverTopic, msg)
+func (p *server) Call(req proto.Message, resp proto.Message) error {
+	return p.rpcClient.Call(p.serverTopic, req, resp)
 }
 
 //gate服使用较多，把消息路由到对应服务器

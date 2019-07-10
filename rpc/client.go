@@ -3,15 +3,20 @@ package rpc
 import (
 	"fmt"
 	"github.com/0990/goserver/rpc/rpcmsg"
+	"github.com/0990/goserver/service"
+	"github.com/0990/goserver/util"
 	"github.com/golang/protobuf/proto"
 	"github.com/nats-io/go-nats"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
+	"reflect"
 	"time"
 )
 
 var ErrTimeOut = errors.New("rpc: timeout")
 var ErrNoKnow = errors.New("rpc: unknow")
+
+const CALL_TIMEOUT = 10 * time.Second
 
 type Client struct {
 	conn         *nats.Conn
@@ -19,9 +24,10 @@ type Client struct {
 	serverID     int32
 	send2Session func(sesID int32, msgID uint32, data []byte) //gate服专用
 	processor    *Processor
+	worker       service.Worker
 }
 
-func newClient(serverID int32) (*Client, error) {
+func newClient(serverID int32, worker service.Worker) (*Client, error) {
 	p := &Client{}
 	conn, err := nats.Connect(nats.DefaultURL)
 	if err != nil {
@@ -31,53 +37,82 @@ func newClient(serverID int32) (*Client, error) {
 	p.serverID = serverID
 	p.serverTopic = fmt.Sprintf("%v", serverID)
 	p.processor = NewProcessor()
+	p.worker = worker
 	return p, nil
 }
 
 //阻塞式
-func (p *Client) Call(serverTopic string, msg proto.Message) (proto.Message, error) {
-	ret := make(chan proto.Message)
-
-	call := p.processor.RegisterCall(func(msg proto.Message, err error) {
-		ret <- msg
+func (p *Client) Call(serverTopic string, req proto.Message, resp proto.Message) error {
+	ret := make(chan error)
+	call := p.processor.RegisterCall(resp, func(err error) {
+		ret <- err
 	})
 
-	data := MakeRequestData(msg, call.seqID, p.serverID)
-	err := p.publish(serverTopic, data)
-	if err != nil {
-		return nil, err
-	}
-
-	select {
-	case result, ok := <-ret:
-		if !ok {
-			return nil, errors.New("client closed")
-		}
-		return result, nil
-	case <-time.After(time.Second * 10):
-		p.processor.GetCallWithDel(call.seqID)
-		return nil, ErrTimeOut
-	}
-
-	return nil, ErrNoKnow
-}
-
-//非阻塞式
-func (p *Client) Request(serverTopic string, msg proto.Message, onRecv func(proto.Message, error)) error {
-	call := p.processor.RegisterCall(onRecv)
-	data := MakeRequestData(msg, call.seqID, p.serverID)
+	data := MakeRequestData(req, call.seqID, p.serverID)
 	err := p.publish(serverTopic, data)
 	if err != nil {
 		return err
 	}
 
-	time.AfterFunc(time.Second*10, func() {
+	select {
+	case err, ok := <-ret:
+		if !ok {
+			return errors.New("client closed")
+		}
+		return err
+	case <-time.After(CALL_TIMEOUT):
+		p.processor.GetCallWithDel(call.seqID)
+		return ErrTimeOut
+	}
+
+	return ErrNoKnow
+}
+
+//不需要注册Response的Request请求 onRecv func(*msg.XXX,error)
+func (p *Client) Request(serverTopic string, msg proto.Message, cb interface{}) error {
+	cbType := reflect.TypeOf(cb)
+	if cbType.Kind() != reflect.Func {
+		return errors.New("cb not a func")
+	}
+	cbValue := reflect.ValueOf(cb)
+	numArgs := cbType.NumIn()
+	if numArgs != 2 {
+		return errors.New("cb param num args !=2")
+	}
+	args0 := cbType.In(0)
+	if args0.Kind() != reflect.Ptr {
+		return errors.New("cb param args0 not ptr")
+	}
+	//TODO 严格检查参数类型
+	args1 := cbType.In(1)
+
+	//TODO 如果出现error,resp==nil
+	resp := reflect.New(args0.Elem()).Interface().(proto.Message)
+	onRecv := func(err error) {
+		oV := make([]reflect.Value, 2)
+		oV[0] = reflect.ValueOf(resp)
+		if err == nil {
+			oV[1] = reflect.New(args1).Elem()
+		} else {
+			oV[1] = reflect.ValueOf(err)
+		}
+		cbValue.Call(oV)
+	}
+
+	call := p.processor.RegisterCall(resp, onRecv)
+	data := MakeRequestData(msg, call.seqID, p.serverID)
+	err := p.publish(serverTopic, data)
+	if err != nil {
+		return err
+	}
+	util.PrintCurrNano("client request after")
+
+	time.AfterFunc(CALL_TIMEOUT, func() {
 		//TODO 放在主线程中工作
 		if _, ok := p.processor.GetCallWithDel(call.seqID); ok {
-			onRecv(nil, ErrTimeOut)
+			onRecv(ErrTimeOut)
 		}
 	})
-
 	return nil
 }
 
@@ -115,51 +150,59 @@ func (p *Client) ReadLoop() error {
 		} else if err != nil {
 			return err
 		}
+		util.PrintCurrNano("client data")
 		rpcData := &rpcmsg.Data{}
 		err = proto.Unmarshal(m.Data, rpcData)
 		if err != nil {
 			logrus.WithError(err)
 			continue
 		}
-		msgID := rpcData.Msgid
-		seqID := rpcData.Seqid
-		sesID := rpcData.Sesid
-		senderID := rpcData.Senderid
-		data := rpcData.Data
+		p.worker.Post(func() {
+			p.handle(rpcData)
+		})
+	}
+}
 
-		switch rpcData.Type {
-		case rpcmsg.Data_Request:
-			s := NewRequestServer(p, senderID, seqID)
-			err := p.processor.HandleRequest(s, msgID, data)
-			if err != nil {
-				logrus.WithError(err)
-				continue
-			}
-		case rpcmsg.Data_Response:
-			err := p.processor.HandleResponse(seqID, msgID, data)
-			if err != nil {
-				logrus.WithError(err)
-				continue
-			}
-		case rpcmsg.Data_Session2Server:
-			s := NewSession(p, senderID, sesID)
-			err := p.processor.HandleSessionMsg(s, msgID, data)
-			if err != nil {
-				logrus.WithError(err)
-				continue
-			}
-		case rpcmsg.Data_Server2Session:
-			p.send2Session(sesID, msgID, data)
-		case rpcmsg.Data_Server2Server:
-			s := NewServer(p, senderID)
-			err := p.processor.HandleMsg(s, msgID, data)
-			if err != nil {
-				logrus.WithError(err)
-				continue
-			}
-		default:
-			logrus.WithField("rpcType", rpcData.Type).Error("not support rpc type")
+func (p *Client) handle(rpcData *rpcmsg.Data) {
+	msgID := rpcData.Msgid
+	seqID := rpcData.Seqid
+	sesID := rpcData.Sesid
+	senderID := rpcData.Senderid
+	data := rpcData.Data
+
+	switch rpcData.Type {
+	case rpcmsg.Data_Request:
+		s := NewRequestServer(p, senderID, seqID)
+		err := p.processor.HandleRequest(s, msgID, data)
+		if err != nil {
+			logrus.WithError(err)
+			return
 		}
+	case rpcmsg.Data_Response:
+		util.PrintCurrNano("client Data_Response")
+		err := p.processor.HandleResponse(seqID, data)
+		if err != nil {
+			logrus.WithError(err)
+			return
+		}
+	case rpcmsg.Data_Session2Server:
+		s := NewSession(p, senderID, sesID)
+		err := p.processor.HandleSessionMsg(s, msgID, data)
+		if err != nil {
+			logrus.WithError(err)
+			return
+		}
+	case rpcmsg.Data_Server2Session:
+		p.send2Session(sesID, msgID, data)
+	case rpcmsg.Data_Server2Server:
+		s := NewServer(p, senderID)
+		err := p.processor.HandleMsg(s, msgID, data)
+		if err != nil {
+			logrus.WithError(err)
+			return
+		}
+	default:
+		logrus.WithField("rpcType", rpcData.Type).Error("not support rpc type")
 	}
 }
 

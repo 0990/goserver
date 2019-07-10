@@ -14,7 +14,6 @@ type Processor struct {
 	msgID2Request    map[uint32]*RequestInfo
 	msgID2ServerMsg  map[uint32]*ServerMsgInfo
 	msgID2SessionMsg map[uint32]*SessionMsgInfo
-	msgID2Response   map[uint32]reflect.Type
 
 	seqID          int32
 	seqID2CallInfo sync.Map
@@ -44,7 +43,6 @@ func NewProcessor() *Processor {
 	p.msgID2Request = make(map[uint32]*RequestInfo)
 	p.msgID2ServerMsg = make(map[uint32]*ServerMsgInfo)
 	p.msgID2SessionMsg = make(map[uint32]*SessionMsgInfo)
-	p.msgID2Response = make(map[uint32]reflect.Type)
 
 	return p
 }
@@ -151,14 +149,16 @@ func (p *Processor) NewSeqID() int32 {
 
 type Call struct {
 	seqID  int32
-	onRecv func(proto.Message, error)
+	onRecv func(error)
+	resp   proto.Message
 }
 
-func (p *Processor) RegisterCall(onRecv func(proto.Message, error)) *Call {
+func (p *Processor) RegisterCall(resp proto.Message, onRecv func(error)) *Call {
 	seqID := p.NewSeqID()
 	call := &Call{
 		seqID:  seqID,
 		onRecv: onRecv,
+		resp:   resp,
 	}
 	p.seqID2CallInfo.Store(seqID, call)
 	return call
@@ -172,32 +172,18 @@ func (p *Processor) GetCallWithDel(seqID int32) (*Call, bool) {
 	return nil, false
 }
 
-func (p *Processor) HandleResponse(seqID int32, msgID uint32, data []byte) error {
-	msgType, ok := p.msgID2Response[msgID]
+func (p *Processor) HandleResponse(seqID int32, data []byte) error {
+	call, ok := p.GetCallWithDel(seqID)
 	if !ok {
-		logrus.Errorf("message %s not registered", msgID)
-		return errors.New("msgID not registered")
+		return errors.New("seqID not existed")
 	}
-
-	msg := reflect.New(msgType.Elem()).Interface().(proto.Message)
-	err := proto.Unmarshal(data, msg)
+	err := proto.Unmarshal(data, call.resp)
 	if err != nil {
 		logrus.WithError(err).Error("HandleRequest")
+		call.onRecv(err)
 		return err
 	}
 
-	if call, ok := p.GetCallWithDel(seqID); ok {
-		call.onRecv(msg, nil)
-	}
+	call.onRecv(nil)
 	return nil
-}
-
-func (p *Processor) RegisterResponseMsg(msg proto.Message) {
-	msgID, msgType := util.ProtoHash(msg)
-	if _, ok := p.msgID2Response[msgID]; ok {
-		logrus.Errorf("message %s is already registered", msgType)
-		return
-	}
-
-	p.msgID2Response[msgID] = msgType
 }

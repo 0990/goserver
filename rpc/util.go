@@ -43,6 +43,7 @@ func MakeResponseData(msg proto.Message, seqID int32, senderID int32) []byte {
 		Msgid:    msgID,
 		Senderid: senderID,
 		Data:     msgData,
+		Seqid:    seqID,
 	}
 
 	data, _ := proto.Marshal(rpc)

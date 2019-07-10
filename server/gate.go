@@ -1,4 +1,4 @@
-package gate
+package server
 
 import (
 	"github.com/0990/goserver/network"
@@ -13,11 +13,11 @@ type Gate struct {
 	networkMgr *network.Mgr
 }
 
-func NewGate(addr string) (*Gate, error) {
+func NewGate(serverID int32, addr string) (*Gate, error) {
 	p := new(Gate)
 	p.worker = service.NewWorker()
 	p.networkMgr = network.NewMgr(addr, p.worker)
-	rpc, err := rpc.NewRPC(100, p.worker)
+	rpc, err := rpc.NewRPC(serverID, p.worker)
 	if err != nil {
 		return nil, err
 	}

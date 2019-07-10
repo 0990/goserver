@@ -1,0 +1,34 @@
+syntax="proto3";
+package cmsg;
+
+message ReqHello{
+    string name = 1;
+}
+
+message RespHello{
+    string name = 1;
+}
+
+message ReqSession2Server{
+    string name = 1;
+}
+
+message RespSession2Server{
+    string name = 1;
+}
+
+message ReqServer2Server{
+    string name = 1;
+}
+
+message RespServer2Server{
+    string name = 1;
+}
+
+message ReqRequest{
+    string name = 1;
+}
+
+message RespRequest{
+    string name = 1;
+}

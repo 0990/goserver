@@ -72,7 +72,7 @@ func (p *Processor) Handle(msg proto.Message, client *Client) error {
 }
 
 func (p *Processor) Unmarshal(data []byte) (proto.Message, error) {
-	if len(data) < 2 {
+	if len(data) < 4 {
 		return nil, errors.New("protobuf data too short")
 	}
 
@@ -89,7 +89,7 @@ func (p *Processor) Unmarshal(data []byte) (proto.Message, error) {
 	}
 
 	msg := reflect.New(msgInfo.msgType.Elem()).Interface().(proto.Message)
-	return msg, proto.Unmarshal(data[2:], msg.(proto.Message))
+	return msg, proto.Unmarshal(data[4:], msg.(proto.Message))
 }
 
 func (p *Processor) Marshal(msg proto.Message) ([]byte, error) {
@@ -112,12 +112,12 @@ func (p *Processor) Marshal(msg proto.Message) ([]byte, error) {
 	//return ret, nil
 }
 
-func (p *Processor) Encode(msgid uint32, data []byte) []byte {
+func (p *Processor) Encode(msgID uint32, data []byte) []byte {
 	msgIDData := make([]byte, 4)
 	if p.littleEndian {
-		binary.LittleEndian.PutUint32(msgIDData, msgid)
+		binary.LittleEndian.PutUint32(msgIDData, msgID)
 	} else {
-		binary.BigEndian.PutUint32(msgIDData, msgid)
+		binary.BigEndian.PutUint32(msgIDData, msgID)
 	}
 
 	//TODO 性能优化

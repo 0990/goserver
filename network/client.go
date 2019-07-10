@@ -10,6 +10,7 @@ import (
 type Session interface {
 	SendMsg(msg proto.Message)
 	SendRawMsg(msgID uint32, data []byte)
+	ID() int32
 }
 
 type Client struct {
@@ -35,7 +36,7 @@ func (p *Client) ReadLoop() {
 
 		msg, err := p.mgr.processor.Unmarshal(data)
 		if err != nil {
-			logrus.Debugf("unmarshal message error: %v", err)
+			logrus.Errorf("unmarshal message error: %v", err)
 			break
 		}
 		p.mgr.Post(func() {
@@ -78,4 +79,8 @@ func (p *Client) SendRawMsg(msgID uint32, data []byte) {
 	if err != nil {
 		logrus.Error("write message error: %v", err)
 	}
+}
+
+func (p *Client) ID() int32 {
+	return p.conn.ID()
 }
