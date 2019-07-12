@@ -2,6 +2,7 @@ package network
 
 import (
 	"encoding/binary"
+	"fmt"
 	"github.com/0990/goserver/util"
 	"github.com/golang/protobuf/proto"
 	"github.com/pkg/errors"
@@ -98,7 +99,7 @@ func (p *Processor) Unmarshal(data []byte) (proto.Message, error) {
 
 	msgInfo, exist := p.msgID2Info[msgID]
 	if !exist {
-		return nil, errors.New("msgID not registered")
+		return nil, errors.New(fmt.Sprintf("msgID:%d not registered", msgID))
 	}
 
 	msg := reflect.New(msgInfo.msgType.Elem()).Interface().(proto.Message)

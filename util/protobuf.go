@@ -12,6 +12,7 @@ import (
 //}
 
 func ProtoHash(msg proto.Message) (uint32, reflect.Type) {
-	msgType := reflect.TypeOf(msg)
-	return CRC32Hash(msgType.String()), reflect.TypeOf(msg)
+	//msgType := reflect.TypeOf(msg)
+	msgName := proto.MessageName(msg)
+	return CRC32Hash(msgName), reflect.TypeOf(msg)
 }
