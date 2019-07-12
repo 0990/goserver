@@ -45,12 +45,12 @@ func (p *Gate) RegisterNetWorkEvent(onNew, onClose func(conn network.Session)) {
 	p.networkMgr.RegisterEvent(onNew, onClose)
 }
 
-func (p *Gate) RegisterSessionHandler(msg proto.Message, f func(network.Session, proto.Message)) {
-	p.networkMgr.RegisterSessionHandler(msg, f)
+func (p *Gate) RegisterSessionMsgHandler(cb interface{}) {
+	p.networkMgr.RegisterSessionMsgHandler(cb)
 }
 
-func (p *Gate) RegisterRequestHandler(msg proto.Message, f func(rpc.RequestServer, proto.Message)) {
-	p.rpc.RegisterRequest(msg, f)
+func (p *Gate) RegisterRequestMsgHandler(cb interface{}) {
+	p.rpc.RegisterRequestMsgHandler(cb)
 }
 
 func (p *Gate) GetServerById(serverID int32) rpc.Server {
@@ -59,4 +59,10 @@ func (p *Gate) GetServerById(serverID int32) rpc.Server {
 
 func (p *Gate) GetSession(sesID int32) (network.Session, bool) {
 	return p.networkMgr.GetSession(sesID)
+}
+
+func (p *Gate) RouteSessionMsg(msg proto.Message, serverID int32) {
+	p.networkMgr.RegisterRawSessionMsgHandler(msg, func(s network.Session, msg proto.Message) {
+		p.GetServerById(serverID).RouteSession2Server(s.ID(), msg)
+	})
 }

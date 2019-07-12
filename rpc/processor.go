@@ -47,7 +47,7 @@ func NewProcessor() *Processor {
 	return p
 }
 
-func (p *Processor) RegisterRequest(msg proto.Message, f RequestHandler) {
+func (p *Processor) RegisterRequestMsgHandler(msg proto.Message, f RequestHandler) {
 	msgID, msgType := util.ProtoHash(msg)
 	if _, ok := p.msgID2Request[msgID]; ok {
 		logrus.Errorf("message %s is already registered", msgType)
@@ -60,7 +60,34 @@ func (p *Processor) RegisterRequest(msg proto.Message, f RequestHandler) {
 	p.msgID2Request[msgID] = msgInfo
 }
 
-func (p *Processor) RegisterMsg(msg proto.Message, f ServerMsgHandler) {
+//func (p *Processor) RegisterRequestMsgHandler(cb interface{}) {
+//	cbType := reflect.TypeOf(cb)
+//	if cbType.Kind() != reflect.Func {
+//		logrus.Error("cb not a func")
+//		return
+//	}
+//	cbValue := reflect.ValueOf(cb)
+//	numArgs := cbType.NumIn()
+//	if numArgs != 2 {
+//		logrus.Error("cb param num args !=2")
+//		return
+//	}
+//
+//	//TODO 严格检查参数类型
+//	//args0 := cbType.In(0)
+//	args1 := cbType.In(1)
+//	if args1.Kind() != reflect.Ptr {
+//		logrus.Error("cb param args1 not ptr")
+//		return
+//	}
+//
+//	msg := reflect.New(args1).Elem().Interface().(proto.Message)
+//	p.registerRequestMsgHandler(msg, func(s RequestServer, message proto.Message) {
+//		cbValue.Call([]reflect.Value{reflect.ValueOf(s), reflect.ValueOf(message)})
+//	})
+//}
+
+func (p *Processor) RegisterServerMsgHandler(msg proto.Message, f ServerMsgHandler) {
 	msgID, msgType := util.ProtoHash(msg)
 	if _, ok := p.msgID2ServerMsg[msgID]; ok {
 		logrus.Errorf("message %s is already registered", msgType)
@@ -73,7 +100,35 @@ func (p *Processor) RegisterMsg(msg proto.Message, f ServerMsgHandler) {
 	p.msgID2ServerMsg[msgID] = msgInfo
 }
 
-func (p *Processor) RegisterSessionMsg(msg proto.Message, f SessionMsgHandler) {
+//func (p *Processor) RegisterServerMsgHandler(cb interface{}) {
+//	cbType := reflect.TypeOf(cb)
+//	if cbType.Kind() != reflect.Func {
+//		logrus.Error("cb not a func")
+//		return
+//	}
+//	cbValue := reflect.ValueOf(cb)
+//	numArgs := cbType.NumIn()
+//	if numArgs != 2 {
+//		logrus.Error("cb param num args !=2")
+//		return
+//	}
+//
+//	//TODO 严格检查参数类型
+//	//args0 := cbType.In(0)
+//	args1 := cbType.In(1)
+//	if args1.Kind() != reflect.Ptr {
+//		logrus.Error("cb param args1 not ptr")
+//		return
+//	}
+//
+//	msg := reflect.New(args1).Elem().Interface().(proto.Message)
+//	p.registerServerMsgHandler(msg, func(s Server, message proto.Message) {
+//		cbValue.Call([]reflect.Value{reflect.ValueOf(s), reflect.ValueOf(message)})
+//	})
+//
+//}
+
+func (p *Processor) RegisterSessionMsgHandler(msg proto.Message, f SessionMsgHandler) {
 	msgID, msgType := util.ProtoHash(msg)
 	if _, ok := p.msgID2SessionMsg[msgID]; ok {
 		logrus.Errorf("message %s is already registered", msgType)
@@ -85,6 +140,33 @@ func (p *Processor) RegisterSessionMsg(msg proto.Message, f SessionMsgHandler) {
 	msgInfo.msgHandler = f
 	p.msgID2SessionMsg[msgID] = msgInfo
 }
+
+//func (p *Processor) RegisterSessionMsgHandler(cb interface{}) {
+//	cbType := reflect.TypeOf(cb)
+//	if cbType.Kind() != reflect.Func {
+//		logrus.Error("cb not a func")
+//		return
+//	}
+//	cbValue := reflect.ValueOf(cb)
+//	numArgs := cbType.NumIn()
+//	if numArgs != 2 {
+//		logrus.Error("cb param num args !=2")
+//		return
+//	}
+//
+//	//TODO 严格检查参数类型
+//	//args0 := cbType.In(0)
+//	args1 := cbType.In(1)
+//	if args1.Kind() != reflect.Ptr {
+//		logrus.Error("cb param args1 not ptr")
+//		return
+//	}
+//
+//	msg := reflect.New(args1).Elem().Interface().(proto.Message)
+//	p.registerSessionMsgHandler(msg, func(s Session, message proto.Message) {
+//		cbValue.Call([]reflect.Value{reflect.ValueOf(s), reflect.ValueOf(message)})
+//	})
+//}
 
 func (p *Processor) HandleRequest(server RequestServer, msgID uint32, data []byte) error {
 	msgInfo, ok := p.msgID2Request[msgID]

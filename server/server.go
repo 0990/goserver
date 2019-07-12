@@ -3,7 +3,6 @@ package server
 import (
 	"github.com/0990/goserver/rpc"
 	"github.com/0990/goserver/service"
-	"github.com/golang/protobuf/proto"
 )
 
 type Server struct {
@@ -32,18 +31,23 @@ func (p *Server) Post(f func()) {
 	p.worker.Post(f)
 }
 
-func (p *Server) RegisterRequestHandler(msg proto.Message, f func(rpc.RequestServer, proto.Message)) {
-	p.rpc.RegisterRequest(msg, f)
+func (p *Server) RegisterRequestMsgHandler(cb interface{}) {
+	p.rpc.RegisterRequestMsgHandler(cb)
 }
 
 func (p *Server) GetServerById(serverID int32) rpc.Server {
 	return p.rpc.GetServerById(serverID)
 }
 
-func (p *Server) RegisterServerMsg(msg proto.Message, f func(rpc.Server, proto.Message)) {
-	p.rpc.RegisterServerMsg(msg, f)
+//
+//func (p *Server) RegisterServerMsg(msg proto.Message, f func(rpc.Server, proto.Message)) {
+//	p.rpc.RegisterServerMsg(msg, f)
+//}
+
+func (p *Server) RegisterSessionMsgHandler(cb interface{}) {
+	p.rpc.RegisterSessionMsgHandler(cb)
 }
 
-func (p *Server) RegisterSessionMsg(msg proto.Message, f func(rpc.Session, proto.Message)) {
-	p.rpc.RegisterSessionMsg(msg, f)
+func (p *Server) RegisterServerHandler(cb interface{}) {
+	p.rpc.RegisterServerMsgHandler(cb)
 }

@@ -2,7 +2,10 @@ package rpc
 
 import (
 	"github.com/0990/goserver/service"
+	"github.com/0990/goserver/util"
 	"github.com/golang/protobuf/proto"
+	"github.com/sirupsen/logrus"
+	"reflect"
 	"sync"
 )
 
@@ -43,16 +46,44 @@ func (p *RPC) Run() {
 	//p.worker.Run()
 }
 
-func (p *RPC) RegisterServerMsg(msg proto.Message, f ServerMsgHandler) {
-	p.client.processor.RegisterMsg(msg, f)
+//func (p *RPC) RegisterServerMsg(msg proto.Message, f ServerMsgHandler) {
+//	p.client.processor.RegisterMsg(msg, f)
+//}
+
+func (p *RPC) RegisterServerMsgHandler(cb interface{}) {
+	err, funValue, msgType := util.CheckArgs1MsgFun(cb)
+	if err != nil {
+		logrus.WithError(err).Error("RegisterServerMsgHandler")
+		return
+	}
+	msg := reflect.New(msgType).Elem().Interface().(proto.Message)
+	p.client.processor.RegisterServerMsgHandler(msg, func(s Server, message proto.Message) {
+		funValue.Call([]reflect.Value{reflect.ValueOf(s), reflect.ValueOf(message)})
+	})
 }
 
-func (p *RPC) RegisterSessionMsg(msg proto.Message, f SessionMsgHandler) {
-	p.client.processor.RegisterSessionMsg(msg, f)
+func (p *RPC) RegisterSessionMsgHandler(cb interface{}) {
+	err, funValue, msgType := util.CheckArgs1MsgFun(cb)
+	if err != nil {
+		logrus.WithError(err).Error("RegisterServerMsgHandler")
+		return
+	}
+	msg := reflect.New(msgType).Elem().Interface().(proto.Message)
+	p.client.processor.RegisterSessionMsgHandler(msg, func(s Session, message proto.Message) {
+		funValue.Call([]reflect.Value{reflect.ValueOf(s), reflect.ValueOf(message)})
+	})
 }
 
-func (p *RPC) RegisterRequest(msg proto.Message, f RequestHandler) {
-	p.client.processor.RegisterRequest(msg, f)
+func (p *RPC) RegisterRequestMsgHandler(cb interface{}) {
+	err, funValue, msgType := util.CheckArgs1MsgFun(cb)
+	if err != nil {
+		logrus.WithError(err).Error("RegisterServerMsgHandler")
+		return
+	}
+	msg := reflect.New(msgType).Elem().Interface().(proto.Message)
+	p.client.processor.RegisterRequestMsgHandler(msg, func(s RequestServer, message proto.Message) {
+		funValue.Call([]reflect.Value{reflect.ValueOf(s), reflect.ValueOf(message)})
+	})
 }
 
 func (p *RPC) GetServerById(serverID int32) Server {

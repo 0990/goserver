@@ -32,7 +32,31 @@ func (p *Processor) SetByteOrder(littleEndian bool) {
 	p.littleEndian = littleEndian
 }
 
-func (p *Processor) Register(msg proto.Message) {
+//func (p *Processor) Register(msg proto.Message) {
+//	msgID, msgType := util.ProtoHash(msg)
+//	if _, ok := p.msgID2Info[msgID]; ok {
+//		logrus.Errorf("message %s is already registered", msgType)
+//		return
+//	}
+//
+//	msgInfo := new(MsgInfo)
+//	msgInfo.msgType = msgType
+//	p.msgID2Info[msgID] = msgInfo
+//	return
+//}
+//
+//func (p *Processor) SetHandler(msg proto.Message, msgHandler MsgHandler) {
+//	msgID, msgType := util.ProtoHash(msg)
+//	msgInfo, ok := p.msgID2Info[msgID]
+//	if !ok {
+//		logrus.Errorf("message %s not registered", msgType)
+//		return
+//	}
+//
+//	msgInfo.msgHandler = msgHandler
+//}
+
+func (p *Processor) RegisterSessionMsgHandler(msg proto.Message, handler MsgHandler) {
 	msgID, msgType := util.ProtoHash(msg)
 	if _, ok := p.msgID2Info[msgID]; ok {
 		logrus.Errorf("message %s is already registered", msgType)
@@ -41,19 +65,8 @@ func (p *Processor) Register(msg proto.Message) {
 
 	msgInfo := new(MsgInfo)
 	msgInfo.msgType = msgType
+	msgInfo.msgHandler = handler
 	p.msgID2Info[msgID] = msgInfo
-	return
-}
-
-func (p *Processor) SetHandler(msg proto.Message, msgHandler MsgHandler) {
-	msgID, msgType := util.ProtoHash(msg)
-	msgInfo, ok := p.msgID2Info[msgID]
-	if !ok {
-		logrus.Errorf("message %s not registered", msgType)
-		return
-	}
-
-	msgInfo.msgHandler = msgHandler
 }
 
 func (p *Processor) Handle(msg proto.Message, client *Client) error {

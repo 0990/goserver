@@ -2,7 +2,10 @@ package network
 
 import (
 	"github.com/0990/goserver/service"
+	"github.com/0990/goserver/util"
 	"github.com/golang/protobuf/proto"
+	"github.com/sirupsen/logrus"
+	"reflect"
 	"sync"
 )
 
@@ -58,7 +61,23 @@ func (p *Mgr) GetSession(sesID int32) (Session, bool) {
 	return v, ok
 }
 
-func (p *Mgr) RegisterSessionHandler(msg proto.Message, f func(Session, proto.Message)) {
-	p.processor.Register(msg)
-	p.processor.SetHandler(msg, f)
+//func (p *Mgr) RegisterSessionMsgHandler(msg proto.Message, f func(Session, proto.Message)) {
+//	p.processor.Register(msg)
+//	p.processor.SetHandler(msg, f)
+//}
+
+func (p *Mgr) RegisterSessionMsgHandler(cb interface{}) {
+	err, funValue, msgType := util.CheckArgs1MsgFun(cb)
+	if err != nil {
+		logrus.WithError(err).Error("RegisterServerMsgHandler")
+		return
+	}
+	msg := reflect.New(msgType).Elem().Interface().(proto.Message)
+	p.processor.RegisterSessionMsgHandler(msg, func(s Session, message proto.Message) {
+		funValue.Call([]reflect.Value{reflect.ValueOf(s), reflect.ValueOf(message)})
+	})
+}
+
+func (p *Mgr) RegisterRawSessionMsgHandler(msg proto.Message, handler MsgHandler) {
+	p.processor.RegisterSessionMsgHandler(msg, handler)
 }

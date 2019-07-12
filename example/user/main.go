@@ -5,7 +5,6 @@ import (
 	cmsg "github.com/0990/goserver/example/msg"
 	"github.com/0990/goserver/rpc"
 	"github.com/0990/goserver/server"
-	"github.com/golang/protobuf/proto"
 	"time"
 )
 
@@ -25,8 +24,7 @@ func main() {
 	}
 
 	//测试sessionHandler
-	s.RegisterSessionMsg(&cmsg.ReqHello{}, func(client rpc.Session, msg1 proto.Message) {
-		req := msg1.(*cmsg.ReqHello)
+	s.RegisterSessionMsgHandler(func(client rpc.Session, req *cmsg.ReqHello) {
 		fmt.Println(req.Name)
 		resp := &cmsg.RespHello{
 			Name: "userbaobao",
@@ -34,14 +32,17 @@ func main() {
 		client.SendMsg(resp)
 	})
 
-	s.RegisterServerMsg(&cmsg.ReqServer2Server{}, func(server rpc.Server, message proto.Message) {
-		req := message.(*cmsg.ReqServer2Server)
+	//s.RegisterServerMsg(&cmsg.ReqServer2Server{}, func(server rpc.Server, message proto.Message) {
+	//	req := message.(*cmsg.ReqServer2Server)
+	//	fmt.Println("server2server message", req)
+	//})
+
+	s.RegisterServerHandler(func(server rpc.Server, req *cmsg.ReqServer2Server) {
 		fmt.Println("server2server message", req)
 	})
 
-	s.RegisterRequestHandler(&cmsg.ReqRequest{}, func(server rpc.RequestServer, message proto.Message) {
+	s.RegisterRequestMsgHandler(func(server rpc.RequestServer, req *cmsg.ReqRequest) {
 		now := time.Now()
-		req := message.(*cmsg.ReqRequest)
 		fmt.Println("request message", req)
 		resp := &cmsg.RespRequest{
 			Name: req.Name,

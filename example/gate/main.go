@@ -7,9 +7,7 @@ import (
 	"github.com/0990/goserver/network"
 	"github.com/0990/goserver/server"
 	"github.com/0990/goserver/util"
-	"github.com/golang/protobuf/proto"
 	"github.com/sirupsen/logrus"
-	"net/http"
 	_ "net/http/pprof"
 	"time"
 )
@@ -22,9 +20,9 @@ type clientMgr struct {
 
 func main() {
 
-	go func() {
-		fmt.Println(http.ListenAndServe("0.0.0.0:8888", nil))
-	}()
+	//go func() {
+	//	fmt.Println(http.ListenAndServe("0.0.0.0:8888", nil))
+	//}()
 
 	mgr := &clientMgr{
 		clients: make(map[network.Session]struct{}),
@@ -41,23 +39,24 @@ func main() {
 	}, func(conn network.Session) {
 		delete(mgr.clients, conn)
 	})
-	g.RegisterSessionHandler(&cmsg.ReqHello{}, func(session network.Session, msg1 proto.Message) {
-		//req := msg1.(*cmsg.ReqHello)
-		//fmt.Println(req.Name)
-		//resp := &cmsg.RespHello{
-		//	Name: "baobao",
-		//}
-		//client.SendMsg(resp)
-		util.PrintGoroutineID("gate receive msg")
-		//	fmt.Println("gate 收到消息")
-		g.GetServerById(101).RouteSession2Server(session.ID(), msg1)
-	})
+	g.RouteSessionMsg((*cmsg.ReqHello)(nil), 101)
+	//g.RegisterSessionMsgHandler(func(session network.Session, msg *cmsg.ReqHello) {
+	//	//req := msg1.(*cmsg.ReqHello)
+	//	//fmt.Println(req.Name)
+	//	//resp := &cmsg.RespHello{
+	//	//	Name: "baobao",
+	//	//}
+	//	//client.SendMsg(resp)
+	//	util.PrintGoroutineID("gate receive msg")
+	//	//	fmt.Println("gate 收到消息")
+	//	g.GetServerById(101).RouteSession2Server(session.ID(), msg)
+	//})
 
 	g.Run()
 
 	//send
 	g.GetServerById(101).Send(&cmsg.ReqServer2Server{
-		Name: "server2server",
+		Name: "server2server xu",
 	})
 
 	//call
