@@ -6,7 +6,7 @@ import (
 	"github.com/0990/goserver/service"
 	"github.com/0990/goserver/util"
 	"github.com/golang/protobuf/proto"
-	"github.com/nats-io/go-nats"
+	"github.com/nats-io/nats.go"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"reflect"

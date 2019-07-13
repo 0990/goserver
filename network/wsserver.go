@@ -9,7 +9,12 @@ import (
 )
 
 //这里可以定义handshake规则：超时时间等
-var upgrader = websocket.Upgrader{} // use default options
+var upgrader = websocket.Upgrader{
+	CheckOrigin: func(r *http.Request) bool {
+		return true
+	},
+	Subprotocols: []string{"avatar-fight"},
+} // use default options
 
 type WSServer struct {
 	sync.Mutex
