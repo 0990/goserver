@@ -1,11 +1,15 @@
 package service
 
-import "runtime/debug"
+import (
+	"runtime/debug"
+	"time"
+)
 
 type Worker interface {
 	Post(f func())
 	Run()
 	Close()
+	AfterPost(duration time.Duration, f func()) *time.Timer
 }
 
 //TODO 这里的实现 chan如果塞满会阻塞进程，可对比参照github.com/davyxu/cellnet EventQueue实现，选方案
@@ -43,4 +47,10 @@ func (p *Work) protectedFun(callback func()) {
 		}
 	}()
 	callback()
+}
+
+func (p *Work) AfterPost(duration time.Duration, f func()) *time.Timer {
+	return time.AfterFunc(duration, func() {
+		p.Post(f)
+	})
 }
