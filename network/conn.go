@@ -7,4 +7,5 @@ type Conn interface {
 	WriteMsg(args []byte) error
 	LocalAddr() net.Addr
 	ID() int32
+	Close()
 }

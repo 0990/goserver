@@ -11,6 +11,7 @@ type Session interface {
 	SendMsg(msg proto.Message)
 	SendRawMsg(msgID uint32, data []byte)
 	ID() int32
+	Close()
 }
 
 type Client struct {
@@ -83,4 +84,8 @@ func (p *Client) SendRawMsg(msgID uint32, data []byte) {
 
 func (p *Client) ID() int32 {
 	return p.conn.ID()
+}
+
+func (p *Client) Close() {
+	p.conn.Close()
 }

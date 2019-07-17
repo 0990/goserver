@@ -6,8 +6,9 @@ import (
 )
 
 type Server struct {
-	worker service.Worker
-	rpc    *rpc.RPC
+	worker   service.Worker
+	rpc      *rpc.RPC
+	serverID int32
 }
 
 func NewServer(serverID int32) (*Server, error) {
@@ -18,6 +19,7 @@ func NewServer(serverID int32) (*Server, error) {
 		return nil, err
 	}
 	p.rpc = rpc
+	p.serverID = serverID
 	return p, nil
 }
 
@@ -25,6 +27,10 @@ func NewServer(serverID int32) (*Server, error) {
 func (p *Server) Run() {
 	p.worker.Run()
 	p.rpc.Run()
+}
+
+func (p *Server) Worker() service.Worker {
+	return p.worker
 }
 
 func (p *Server) Post(f func()) {
@@ -50,4 +56,12 @@ func (p *Server) RegisterSessionMsgHandler(cb interface{}) {
 
 func (p *Server) RegisterServerHandler(cb interface{}) {
 	p.rpc.RegisterServerMsgHandler(cb)
+}
+
+func (p *Server) ID() int32 {
+	return p.serverID
+}
+
+func (p *Server) RPCSession(s rpc.GateSessionID) rpc.Session {
+	return p.rpc.Session(s.GateID, s.SesID)
 }

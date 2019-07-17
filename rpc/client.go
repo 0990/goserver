@@ -150,7 +150,6 @@ func (p *Client) ReadLoop() error {
 		} else if err != nil {
 			return err
 		}
-		util.PrintCurrNano("client data")
 		rpcData := &rpcmsg.Data{}
 		err = proto.Unmarshal(m.Data, rpcData)
 		if err != nil {
@@ -179,7 +178,6 @@ func (p *Client) handle(rpcData *rpcmsg.Data) {
 			return
 		}
 	case rpcmsg.Data_Response:
-		util.PrintCurrNano("client Data_Response")
 		err := p.processor.HandleResponse(seqID, data)
 		if err != nil {
 			logrus.WithError(err)

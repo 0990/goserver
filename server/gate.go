@@ -66,3 +66,7 @@ func (p *Gate) RouteSessionMsg(msg proto.Message, serverID int32) {
 		p.GetServerById(serverID).RouteSession2Server(s.ID(), msg)
 	})
 }
+
+func (p *Gate) RegisterRawSessionMsgHandler(msg proto.Message, f func(s network.Session, message proto.Message)) {
+	p.networkMgr.RegisterRawSessionMsgHandler(msg, f)
+}

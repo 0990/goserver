@@ -105,3 +105,7 @@ func (p *RPC) GetServerByType(serverType ServerType) Server {
 func (p *RPC) RegisterSend2Session(send2Session func(sesID int32, msgID uint32, data []byte)) {
 	p.client.RegisterSend2Session(send2Session)
 }
+
+func (p *RPC) Session(gateID, sesID int32) Session {
+	return NewSession(p.client, gateID, sesID)
+}

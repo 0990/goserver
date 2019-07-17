@@ -22,6 +22,8 @@ type Server interface {
 
 	//func(*msg.XXX, error))
 	Request(proto.Message, interface{}) error
+
+	ID() int32
 }
 
 type server struct {
@@ -40,6 +42,10 @@ func NewServer(client *Client, serverid int32) Server {
 
 func (p *server) Send(msg proto.Message) {
 	p.rpcClient.SendMsg(p.serverTopic, msg)
+}
+
+func (p *server) ID() int32 {
+	return p.serverid
 }
 
 //func (p *server) Request(msg proto.Message, f func(proto.Message, error)) error {
@@ -92,31 +98,45 @@ func (p *requestserver) Answer(msg proto.Message) {
 	p.server.rpcClient.Answer(p.serverTopic, p.seqid, msg)
 }
 
+func (p *requestserver) ID() int32 {
+	return p.serverid
+}
+
 type Session interface {
 	SendMsg(msg proto.Message)
 	SendRawMsg(msgID uint16, data []byte)
+	GateSessionID() GateSessionID
+}
+
+type GateSessionID struct {
+	GateID int32
+	SesID  int32
 }
 
 type session struct {
-	sid       int32
+	gsID      GateSessionID
 	rpcClient *Client
-	gateID    int32
 	gateTopic string
 }
 
 func NewSession(client *Client, gateID int32, sesID int32) Session {
+	g := GateSessionID{GateID: gateID, SesID: sesID}
+
 	return &session{
-		sid:       sesID,
-		gateID:    gateID,
+		gsID:      g,
 		rpcClient: client,
 		gateTopic: fmt.Sprintf("%v", gateID),
 	}
 }
 
 func (p *session) SendMsg(msg proto.Message) {
-	p.rpcClient.RouteGate(p.gateTopic, p.sid, msg)
+	p.rpcClient.RouteGate(p.gateTopic, p.gsID.SesID, msg)
 }
 
 func (p *session) SendRawMsg(msgID uint16, data []byte) {
 
+}
+
+func (p *session) GateSessionID() GateSessionID {
+	return p.gsID
 }
