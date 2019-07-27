@@ -171,7 +171,7 @@ func (p *Processor) RegisterSessionMsgHandler(msg proto.Message, f SessionMsgHan
 func (p *Processor) HandleRequest(server RequestServer, msgID uint32, data []byte) error {
 	msgInfo, ok := p.msgID2Request[msgID]
 	if !ok {
-		logrus.Errorf("message %s not registered", msgID)
+		logrus.Errorf("message %d not registered", msgID)
 		return errors.New("msgID not registered")
 	}
 
@@ -190,7 +190,7 @@ func (p *Processor) HandleRequest(server RequestServer, msgID uint32, data []byt
 func (p *Processor) HandleMsg(server Server, msgID uint32, data []byte) error {
 	msgInfo, ok := p.msgID2ServerMsg[msgID]
 	if !ok {
-		logrus.Errorf("message %s not registered", msgID)
+		logrus.Errorf("message %d not registered", msgID)
 		return errors.New("msgID not registered")
 	}
 
@@ -209,7 +209,7 @@ func (p *Processor) HandleMsg(server Server, msgID uint32, data []byte) error {
 func (p *Processor) HandleSessionMsg(session Session, msgID uint32, data []byte) error {
 	msgInfo, ok := p.msgID2SessionMsg[msgID]
 	if !ok {
-		logrus.Errorf("message %s not registered", msgID)
+		logrus.Errorf("message %d not registered", msgID)
 		return errors.New("msgID not registered")
 	}
 

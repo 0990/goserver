@@ -5,6 +5,7 @@ import (
 	"github.com/0990/goserver/rpc"
 	"github.com/0990/goserver/service"
 	"github.com/golang/protobuf/proto"
+	"time"
 )
 
 type Gate struct {
@@ -41,6 +42,10 @@ func (p *Gate) Post(f func()) {
 	p.worker.Post(f)
 }
 
+func (p *Gate) AfterPost(duration time.Duration, f func()) {
+	p.worker.AfterPost(duration, f)
+}
+
 func (p *Gate) RegisterNetWorkEvent(onNew, onClose func(conn network.Session)) {
 	p.networkMgr.RegisterEvent(onNew, onClose)
 }
@@ -51,6 +56,10 @@ func (p *Gate) RegisterSessionMsgHandler(cb interface{}) {
 
 func (p *Gate) RegisterRequestMsgHandler(cb interface{}) {
 	p.rpc.RegisterRequestMsgHandler(cb)
+}
+
+func (p *Gate) RegisterServerHandler(cb interface{}) {
+	p.rpc.RegisterServerMsgHandler(cb)
 }
 
 func (p *Gate) GetServerById(serverID int32) rpc.Server {

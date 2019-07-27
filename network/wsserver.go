@@ -2,6 +2,7 @@ package network
 
 import (
 	"github.com/gorilla/websocket"
+	"github.com/sirupsen/logrus"
 	"log"
 	"net/http"
 	"sync"
@@ -40,6 +41,7 @@ func (p *WSServer) Start() {
 		if err != nil {
 			log.Fatal("ListenAndServe: ", err)
 		}
+		logrus.Info("listen ", p.addr)
 	}()
 }
 

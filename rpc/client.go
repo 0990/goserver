@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/0990/goserver/rpc/rpcmsg"
 	"github.com/0990/goserver/service"
-	"github.com/0990/goserver/util"
 	"github.com/golang/protobuf/proto"
 	"github.com/nats-io/nats.go"
 	"github.com/pkg/errors"
@@ -105,7 +104,7 @@ func (p *Client) Request(serverTopic string, msg proto.Message, cb interface{}) 
 	if err != nil {
 		return err
 	}
-	util.PrintCurrNano("client request after")
+	//util.PrintCurrNano("client request after")
 
 	time.AfterFunc(CALL_TIMEOUT, func() {
 		//TODO 放在主线程中工作

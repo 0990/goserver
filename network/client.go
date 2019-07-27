@@ -47,7 +47,6 @@ func (p *Client) ReadLoop() {
 }
 
 func (p *Client) OnNew() {
-	fmt.Println("client new")
 	p.mgr.Post(func() {
 		p.mgr.sesID2Client[p.conn.ID()] = p
 		p.mgr.onNew(p)
