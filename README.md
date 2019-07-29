@@ -4,7 +4,7 @@
 # 架构
 
 ## 1,gate服
-1，和客户端通信使用websocket，仅支持protobuf，数据结构：<br>
+和客户端通信使用websocket，仅支持protobuf，数据结构：<br>
 
     -------------------------
     | id | protobuf message |

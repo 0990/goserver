@@ -3,10 +3,9 @@ package main
 import (
 	"flag"
 	"fmt"
-	cmsg "github.com/0990/goserver/example/msg"
+	pb "github.com/0990/goserver/example/msg"
 	"github.com/0990/goserver/network"
 	"github.com/0990/goserver/server"
-	"github.com/sirupsen/logrus"
 	_ "net/http/pprof"
 	"time"
 )
@@ -16,6 +15,8 @@ var addr = flag.String("addr", "0.0.0.0:8080", "http service address")
 type clientMgr struct {
 	clients map[network.Session]struct{}
 }
+
+var BServerID int32 = 101
 
 func main() {
 
@@ -34,36 +35,30 @@ func main() {
 	}, func(conn network.Session) {
 		delete(mgr.clients, conn)
 	})
-	g.RouteSessionMsg((*cmsg.ReqHello)(nil), 101)
+	g.RouteSessionMsg((*pb.ReqHello)(nil), BServerID)
 
 	g.Run()
 
-	//send
-	g.GetServerById(101).Send(&cmsg.ReqServer2Server{
-		Name: "server2server xu",
-	})
+	//向B服务器发送消息
+	g.GetServerById(BServerID).Send(&pb.ReqSend{Name: "我是send消息"})
 
-	//call
-	resp := &cmsg.RespRequest{}
-	err = g.GetServerById(101).Call(&cmsg.ReqRequest{
-		Name: "call",
-	}, resp)
-	if err != nil {
-		logrus.WithError(err).Error("error")
-		return
-	}
-	fmt.Println("call return data:", resp)
-
-	//request
-	g.GetServerById(101).Request(&cmsg.ReqRequest{
-		Name: "request",
-	}, func(resp *cmsg.RespRequest, e error) {
-		if e != nil {
-			logrus.Error(e)
+	//向B服务器发送request请求
+	g.GetServerById(BServerID).Request(&pb.ReqRequest{
+		Name: "我是request请求",
+	}, func(resp *pb.RespRequest, err error) {
+		if err != nil {
 			return
 		}
-		fmt.Println("request return data", resp)
+		fmt.Println("返回消息:", resp.Name)
 	})
+
+	//向B服务器发送call请求
+	resp := pb.RespCall{}
+	err = g.GetServerById(BServerID).Call(&pb.ReqCall{Name: "我是call请求"}, &resp)
+	if err != nil {
+		return
+	}
+	fmt.Println("返回消息:", resp.Name)
 
 	time.Sleep(time.Hour)
 }

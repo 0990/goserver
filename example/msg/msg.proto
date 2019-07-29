@@ -1,5 +1,5 @@
 syntax="proto3";
-package cmsg;
+package pb;
 
 message ReqHello{
     string name = 1;
@@ -9,19 +9,11 @@ message RespHello{
     string name = 1;
 }
 
-message ReqSession2Server{
+message ReqSend{
     string name = 1;
 }
 
-message RespSession2Server{
-    string name = 1;
-}
-
-message ReqServer2Server{
-    string name = 1;
-}
-
-message RespServer2Server{
+message RespSend{
     string name = 1;
 }
 
@@ -30,5 +22,13 @@ message ReqRequest{
 }
 
 message RespRequest{
+    string name = 1;
+}
+
+message ReqCall{
+    string name = 1;
+}
+
+message RespCall{
     string name = 1;
 }
