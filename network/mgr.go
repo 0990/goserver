@@ -34,14 +34,13 @@ func NewMgr(wsAddr string, worker service.Worker) *Mgr {
 //	p.worker = worker
 //}
 
-func (p *Mgr) Run() error {
+func (p *Mgr) Run() {
 	//创建websocket server
 	wss := NewWSServer(p.wsAddr, func(conn Conn) *Client {
 		c := NewClient(conn, p)
 		return c
 	})
 	wss.Start()
-	return nil
 }
 
 func (p *Mgr) Post(f func()) {

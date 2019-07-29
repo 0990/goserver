@@ -8,14 +8,7 @@ import (
 	"time"
 )
 
-type clientMgr struct {
-	clients map[rpc.Session]struct{}
-}
-
 func main() {
-	//mgr := &clientMgr{
-	//	clients: make(map[rpc.Session]struct{}),
-	//}
 
 	s, err := server.NewServer(101)
 	if err != nil {
@@ -32,23 +25,16 @@ func main() {
 		client.SendMsg(resp)
 	})
 
-	//s.RegisterServerMsg(&cmsg.ReqServer2Server{}, func(server rpc.Server, message proto.Message) {
-	//	req := message.(*cmsg.ReqServer2Server)
-	//	fmt.Println("server2server message", req)
-	//})
-
 	s.RegisterServerHandler(func(server rpc.Server, req *cmsg.ReqServer2Server) {
-		fmt.Println("server2server message", req)
+		fmt.Println("sendtoserver data:", req)
 	})
 
 	s.RegisterRequestMsgHandler(func(server rpc.RequestServer, req *cmsg.ReqRequest) {
-		now := time.Now()
-		fmt.Println("request message", req)
+		fmt.Println("request req data:", req)
 		resp := &cmsg.RespRequest{
 			Name: req.Name,
 		}
 		server.Answer(resp)
-		fmt.Println("user reqrequest", time.Since(now))
 	})
 
 	s.Run()

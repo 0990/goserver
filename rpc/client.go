@@ -24,6 +24,7 @@ type Client struct {
 	send2Session func(sesID int32, msgID uint32, data []byte) //gate服专用
 	processor    *Processor
 	worker       service.Worker
+	close        chan struct{}
 }
 
 func newClient(serverID int32, worker service.Worker) (*Client, error) {
@@ -37,6 +38,7 @@ func newClient(serverID int32, worker service.Worker) (*Client, error) {
 	p.serverTopic = fmt.Sprintf("%v", serverID)
 	p.processor = NewProcessor()
 	p.worker = worker
+	p.close = make(chan struct{})
 	return p, nil
 }
 
@@ -136,17 +138,28 @@ func (p *Client) Run() {
 	go p.ReadLoop()
 }
 
+func (p *Client) Close() (err error) {
+	p.close <- struct{}{}
+	return
+}
+
 func (p *Client) ReadLoop() error {
 	sub, err := p.conn.SubscribeSync(p.serverTopic)
 	if err != nil {
 		return err
 	}
 
+	go func() {
+		<-p.close
+		sub.Unsubscribe()
+	}()
+
 	for {
 		m, err := sub.NextMsg(time.Minute)
 		if err != nil && err == nats.ErrTimeout {
 			continue
 		} else if err != nil {
+			logrus.WithError(err).Error("ReadLoop NextMsg error")
 			return err
 		}
 		rpcData := &rpcmsg.Data{}

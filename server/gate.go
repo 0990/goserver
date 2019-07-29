@@ -9,9 +9,10 @@ import (
 )
 
 type Gate struct {
-	worker     service.Worker
-	rpc        *rpc.RPC
-	networkMgr *network.Mgr
+	worker      service.Worker
+	rpc         *rpc.RPC
+	networkMgr  *network.Mgr
+	onCloseFuns []func()
 }
 
 func NewGate(serverID int32, addr string) (*Gate, error) {
@@ -36,6 +37,19 @@ func (p *Gate) Run() {
 	p.worker.Run()
 	p.rpc.Run()
 	p.networkMgr.Run()
+}
+
+func (p *Gate) Close() {
+	for _, v := range p.onCloseFuns {
+		v()
+	}
+	p.rpc.Close()
+	p.worker.Close()
+}
+
+//注册关闭事件 worker线程外
+func (p *Gate) RegisterCloseFunc(f func()) {
+	p.onCloseFuns = append(p.onCloseFuns, f)
 }
 
 func (p *Gate) Post(f func()) {

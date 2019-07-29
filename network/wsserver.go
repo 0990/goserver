@@ -2,8 +2,8 @@ package network
 
 import (
 	"github.com/gorilla/websocket"
-	"github.com/sirupsen/logrus"
 	"log"
+	"net"
 	"net/http"
 	"sync"
 	"sync/atomic"
@@ -34,15 +34,20 @@ func NewWSServer(addr string, newClient func(conn Conn) *Client) *WSServer {
 	}
 }
 
-func (p *WSServer) Start() {
-	//TODO 监听失败情况下，要中止程序
+func (p *WSServer) Start() error {
+	ln, err := net.Listen("tcp", p.addr)
+	if err != nil {
+		log.Fatal("启动失败，端口被占用", p.addr)
+		return err
+	}
 	go func() {
-		err := http.ListenAndServe(p.addr, p)
+		err := http.Serve(ln, p)
 		if err != nil {
-			log.Fatal("ListenAndServe: ", err)
+			log.Fatal("WSServer Serve error: ", err)
+			return
 		}
-		logrus.Info("listen ", p.addr)
 	}()
+	return nil
 }
 
 func (p *WSServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {

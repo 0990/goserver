@@ -46,6 +46,10 @@ func (p *RPC) Run() {
 	//p.worker.Run()
 }
 
+func (p *RPC) Close() {
+	p.client.Close()
+}
+
 //func (p *RPC) RegisterServerMsg(msg proto.Message, f ServerMsgHandler) {
 //	p.client.processor.RegisterMsg(msg, f)
 //}
