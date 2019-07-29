@@ -16,11 +16,10 @@ const (
 )
 
 type Server interface {
-	Send(proto.Message)
+	Notify(proto.Message)
 	Call(proto.Message, proto.Message) error
 	RouteSession2Server(sesID int32, msg proto.Message)
 
-	//func(*msg.XXX, error))
 	Request(proto.Message, interface{}) error
 
 	ID() int32
@@ -40,23 +39,13 @@ func NewServer(client *Client, serverid int32) Server {
 	}
 }
 
-func (p *server) Send(msg proto.Message) {
+func (p *server) Notify(msg proto.Message) {
 	p.rpcClient.SendMsg(p.serverTopic, msg)
 }
 
 func (p *server) ID() int32 {
 	return p.serverid
 }
-
-//func (p *server) Request(msg proto.Message, f func(proto.Message, error)) error {
-//	p.rpcClient.Request(p.serverTopic, msg, f)
-//	return nil
-//}
-
-//func (p *server) Request(msg proto.Message, f func(proto.Message, error)) error {
-//	p.rpcClient.Request(p.serverTopic, msg, f)
-//	return nil
-//}
 
 func (p *server) Request(msg proto.Message, f interface{}) error {
 	p.rpcClient.Request(p.serverTopic, msg, f)

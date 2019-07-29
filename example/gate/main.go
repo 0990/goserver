@@ -40,7 +40,7 @@ func main() {
 	g.Run()
 
 	//向B服务器发送消息
-	g.GetServerById(BServerID).Send(&pb.ReqSend{Name: "我是send消息"})
+	g.GetServerById(BServerID).Notify(&pb.ReqSend{Name: "我是send消息"})
 
 	//向B服务器发送request请求
 	g.GetServerById(BServerID).Request(&pb.ReqRequest{
