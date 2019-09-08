@@ -1,6 +1,7 @@
 package network
 
 import (
+	"errors"
 	"github.com/gorilla/websocket"
 	"net"
 	"sync"
@@ -47,33 +48,21 @@ func (p *WSConn) WriteMsg(args []byte) error {
 	defer p.Unlock()
 
 	if p.closeFlag {
-		return nil
+		return errors.New("socket closeFlag is true")
 	}
 
-	return p.doWrite(args)
+	if len(p.send) == cap(p.send) {
+		close(p.send)
+		p.closeFlag = true
+		return errors.New("send buffer full")
+	}
 
-	//var msgLen uint32
-	//for i := 0; i < len(args); i++ {
-	//	msgLen += uint32(len(args[i]))
-	//}
-	//
-	//if len(args) == 1 {
-	//	return p.doWrite(args[0])
-	//}
-	//
-	//msg := make([]byte, msgLen)
-	//l := 0
-	//for i := 0; i < len(args); i++ {
-	//	copy(msg[l:], args[i])
-	//	l += len(args[i])
-	//}
-	//return p.doWrite(msg)
+	p.send <- args
+	return nil
 }
 
-func (p *WSConn) doWrite(data []byte) error {
-	//TODO send chan 堵满情况处理
+func (p *WSConn) doWrite(data []byte) {
 	p.send <- data
-	return nil
 }
 
 func (p *WSConn) ReadMsg() ([]byte, error) {
