@@ -17,8 +17,8 @@ type RPC struct {
 	worker     service.Worker
 }
 
-func NewRPC(serverID int32, worker service.Worker) (*RPC, error) {
-	rpcClient, err := newClient(serverID, worker)
+func NewRPC(serverID int32, worker service.Worker, natsUrl string) (*RPC, error) {
+	rpcClient, err := newClient(serverID, worker, natsUrl)
 	if err != nil {
 		return nil, err
 	}

@@ -1,6 +1,7 @@
 package server
 
 import (
+	"github.com/0990/goserver"
 	"github.com/0990/goserver/rpc"
 	"github.com/0990/goserver/service"
 )
@@ -11,10 +12,10 @@ type Server struct {
 	serverID int32
 }
 
-func NewServer(serverID int32) (*Server, error) {
+func NewServer(serverID int32, config goserver.Config) (*Server, error) {
 	p := new(Server)
 	p.worker = service.NewWorker()
-	rpc, err := rpc.NewRPC(serverID, p.worker)
+	rpc, err := rpc.NewRPC(serverID, p.worker, config.Nats)
 	if err != nil {
 		return nil, err
 	}

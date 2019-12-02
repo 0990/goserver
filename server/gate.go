@@ -1,6 +1,7 @@
 package server
 
 import (
+	"github.com/0990/goserver"
 	"github.com/0990/goserver/network"
 	"github.com/0990/goserver/rpc"
 	"github.com/0990/goserver/service"
@@ -15,11 +16,11 @@ type Gate struct {
 	onCloseFuns []func()
 }
 
-func NewGate(serverID int32, addr string) (*Gate, error) {
+func NewGate(serverID int32, addr string, config goserver.Config) (*Gate, error) {
 	p := new(Gate)
 	p.worker = service.NewWorker()
 	p.networkMgr = network.NewMgr(addr, p.worker)
-	rpc, err := rpc.NewRPC(serverID, p.worker)
+	rpc, err := rpc.NewRPC(serverID, p.worker, config.Nats)
 	if err != nil {
 		return nil, err
 	}

@@ -27,9 +27,9 @@ type Client struct {
 	close        chan struct{}
 }
 
-func newClient(serverID int32, worker service.Worker) (*Client, error) {
+func newClient(serverID int32, worker service.Worker, natsUrl string) (*Client, error) {
 	p := &Client{}
-	conn, err := nats.Connect(nats.DefaultURL)
+	conn, err := nats.Connect(natsUrl)
 	if err != nil {
 		return nil, err
 	}
