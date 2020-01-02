@@ -2,6 +2,7 @@ package service
 
 import (
 	"github.com/0990/goserver/util"
+	"github.com/sirupsen/logrus"
 	"runtime/debug"
 	"time"
 )
@@ -28,6 +29,24 @@ func NewWorker() Worker {
 
 func (p *Work) Post(f func()) {
 	p.funChan <- f
+}
+
+func (p *Work) TryPost(f func(), maxLen int) {
+	if maxLen != 0 && len(p.funChan) > maxLen {
+		logrus.WithFields(logrus.Fields{
+			"maxLen":    maxLen,
+			"workerLen": len(p.funChan),
+		}).Warn("tryPost over maxLen")
+		return
+	}
+
+	select {
+	case p.funChan <- f:
+	default:
+		logrus.WithFields(logrus.Fields{
+			"workerLen": len(p.funChan),
+		}).Warn("worker tryPost,discard")
+	}
 }
 
 func (p *Work) Run() {
@@ -66,7 +85,17 @@ func (p *Work) NewTicker(d time.Duration, f func()) *time.Ticker {
 	go func() {
 		for range ticker.C {
 			p.Post(f)
-			//util.ProtectedFun(f)
+		}
+	}()
+	return ticker
+}
+
+//worker长度超过maxLen就丢弃f
+func (p *Work) NewTryTicker(d time.Duration, maxLen int, f func()) *time.Ticker {
+	ticker := time.NewTicker(d)
+	go func() {
+		for range ticker.C {
+			p.TryPost(f, maxLen)
 		}
 	}()
 	return ticker
