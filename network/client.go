@@ -1,7 +1,6 @@
 package network
 
 import (
-	"fmt"
 	"github.com/golang/protobuf/proto"
 	"github.com/sirupsen/logrus"
 	"reflect"
@@ -31,7 +30,7 @@ func (p *Client) ReadLoop() {
 	for {
 		data, err := p.conn.ReadMsg()
 		if err != nil {
-			fmt.Printf("read message: %v", err)
+			logrus.WithError(err).Error("read message")
 			break
 		}
 
@@ -54,7 +53,6 @@ func (p *Client) OnNew() {
 }
 
 func (p *Client) OnClose() {
-	fmt.Println("client close")
 	p.mgr.Post(func() {
 		delete(p.mgr.sesID2Client, p.conn.ID())
 		p.mgr.onClose(p)

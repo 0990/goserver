@@ -2,7 +2,7 @@ package network
 
 import (
 	"github.com/gorilla/websocket"
-	"log"
+	"github.com/sirupsen/logrus"
 	"net"
 	"net/http"
 	"sync"
@@ -37,13 +37,13 @@ func NewWSServer(addr string, newClient func(conn Conn) *Client) *WSServer {
 func (p *WSServer) Start() error {
 	ln, err := net.Listen("tcp", p.addr)
 	if err != nil {
-		log.Fatal("启动失败，端口被占用", p.addr)
+		logrus.WithField("addr", p.addr).Fatal("启动失败，端口被占用")
 		return err
 	}
 	go func() {
 		err := http.Serve(ln, p)
 		if err != nil {
-			log.Fatal("WSServer Serve error: ", err)
+			logrus.WithError(err).Fatal("WSServer Serve")
 			return
 		}
 	}()
@@ -53,7 +53,7 @@ func (p *WSServer) Start() error {
 func (p *WSServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		log.Println(err)
+		logrus.WithError(err).Error("ServerHttp upgrader.Upgrade")
 		return
 	}
 

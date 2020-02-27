@@ -5,7 +5,7 @@ import (
 	cmsg "github.com/0990/goserver/example/msg"
 	"github.com/0990/goserver/network"
 	"github.com/gorilla/websocket"
-	"log"
+	"github.com/sirupsen/logrus"
 	"net/url"
 	"os"
 	"os/signal"
@@ -17,17 +17,16 @@ var processor = network.NewProcessor()
 
 func main() {
 	flag.Parse()
-	log.SetFlags(0)
 
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, os.Interrupt)
 
 	u := url.URL{Scheme: "ws", Host: *addr, Path: ""}
-	log.Printf("connecting to %s", u.String())
+	logrus.Infoln("connecting to %s", u.String())
 
 	c, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
 	if err != nil {
-		log.Fatal("dial:", err)
+		logrus.WithError(err).Fatal("dial")
 	}
 	defer c.Close()
 
@@ -38,10 +37,10 @@ func main() {
 		for {
 			_, message, err := c.ReadMessage()
 			if err != nil {
-				log.Println("read:", err)
+				logrus.WithError(err).Error("read")
 				return
 			}
-			log.Printf("recv: %s", message)
+			logrus.WithField("message", message).Debug("recv")
 		}
 	}()
 
@@ -59,17 +58,17 @@ func main() {
 			data, _ := processor.Marshal(req)
 			err := c.WriteMessage(websocket.BinaryMessage, data)
 			if err != nil {
-				log.Println("write:", err)
+				logrus.Println("write:", err)
 				return
 			}
 		case <-interrupt:
-			log.Println("interrupt")
+			logrus.Println("interrupt")
 
 			// Cleanly close the connection by sending a close message and then
 			// waiting (with timeout) for the server to close the connection.
 			err := c.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
 			if err != nil {
-				log.Println("write close:", err)
+				logrus.Println("write close:", err)
 				return
 			}
 			select {
