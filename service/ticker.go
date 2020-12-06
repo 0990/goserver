@@ -22,11 +22,13 @@ func (p *workTicker) run() {
 	go func() {
 		ticker := time.NewTicker(p.duration)
 		defer ticker.Stop()
-		select {
-		case <-ticker.C:
-			p.worker.Post(p.f)
-		case <-p.done:
-			return
+		for {
+			select {
+			case <-ticker.C:
+				p.worker.Post(p.f)
+			case <-p.done:
+				return
+			}
 		}
 	}()
 }
