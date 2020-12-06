@@ -3,6 +3,7 @@ package service
 import (
 	"github.com/0990/goserver/util"
 	"github.com/sirupsen/logrus"
+	"io"
 	"runtime/debug"
 	"time"
 )
@@ -12,7 +13,7 @@ type Worker interface {
 	Run()
 	Close()
 	AfterPost(duration time.Duration, f func()) *time.Timer
-	NewTicker(d time.Duration, f func()) *time.Ticker
+	NewTicker(d time.Duration, f func()) io.Closer
 	Len() int
 }
 
@@ -80,14 +81,10 @@ func (p *Work) AfterPost(d time.Duration, f func()) *time.Timer {
 	})
 }
 
-func (p *Work) NewTicker(d time.Duration, f func()) *time.Ticker {
-	ticker := time.NewTicker(d)
-	go func() {
-		for range ticker.C {
-			p.Post(f)
-		}
-	}()
-	return ticker
+func (p *Work) NewTicker(d time.Duration, f func()) io.Closer {
+	t := newWorkTicker(p, d, f)
+	t.run()
+	return t
 }
 
 //worker长度超过maxLen就丢弃f
