@@ -18,6 +18,8 @@ id是消息名的Hash值，用于标记消息名，反解析数据<br>
 ## 2，多服rpc通信
 使用nats(消息队列)构建服务器间通信，支持send,request,call请求
 
+更多技术细节: https://www.jianshu.com/p/74904ace2349
+
 ## 配置
 gate服: server.NewGate(serverId,listenAddr,goserver.Config{Nats: natsAddr}) <br>
 其它服: server.NewServer(serverId,goserver.Config{Nats: natsAddr})<br>
