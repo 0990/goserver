@@ -2,7 +2,8 @@ package main
 
 import (
 	"flag"
-	cmsg "github.com/0990/goserver/example/msg"
+	"fmt"
+	pb "github.com/0990/goserver/example/msg"
 	"github.com/0990/goserver/network"
 	"github.com/gorilla/websocket"
 	"github.com/sirupsen/logrus"
@@ -22,7 +23,7 @@ func main() {
 	signal.Notify(interrupt, os.Interrupt)
 
 	u := url.URL{Scheme: "ws", Host: *addr, Path: ""}
-	logrus.Infoln("connecting to %s", u.String())
+	logrus.Infoln("connecting to ", u.String())
 
 	c, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
 	if err != nil {
@@ -52,15 +53,18 @@ func main() {
 		case <-done:
 			return
 		case <-ticker.C:
-			req := &cmsg.ReqHello{
+			req := &pb.ReqHello{
 				Name: "xujialong",
 			}
 			data, _ := processor.Marshal(req)
 			err := c.WriteMessage(websocket.BinaryMessage, data)
+
+			fmt.Println("客户端发送消息", req.Name)
 			if err != nil {
 				logrus.Println("write:", err)
 				return
 			}
+
 		case <-interrupt:
 			logrus.Println("interrupt")
 

@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"github.com/0990/goserver"
 	pb "github.com/0990/goserver/example/msg"
 	"github.com/0990/goserver/network"
 	"github.com/0990/goserver/server"
@@ -24,7 +25,7 @@ func main() {
 		clients: make(map[network.Session]struct{}),
 	}
 
-	g, err := server.NewGate(100, *addr)
+	g, err := server.NewGate(100, *addr, goserver.Config{Nats: "127.0.0.1:4222"})
 	if err != nil {
 		fmt.Println(err)
 		return
