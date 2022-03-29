@@ -28,8 +28,10 @@ type Client struct {
 }
 
 func newClient(serverID int32, worker service.Worker, natsUrl string) (*Client, error) {
+	name := fmt.Sprintf("%v", serverID)
+
 	p := &Client{}
-	conn, err := nats.Connect(natsUrl)
+	conn, err := nats.Connect(natsUrl, nats.Name(name))
 	if err != nil {
 		return nil, err
 	}
