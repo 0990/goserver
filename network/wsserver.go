@@ -24,6 +24,9 @@ type WSServer struct {
 	conns     map[*websocket.Conn]struct{}
 	connid    int32
 	newClient func(conn Conn) *Client
+	ln        net.Listener
+
+	close func()
 }
 
 func NewWSServer(addr string, newClient func(conn Conn) *Client) *WSServer {
@@ -40,14 +43,32 @@ func (p *WSServer) Start() error {
 		logrus.WithField("addr", p.addr).Fatal("启动失败，端口被占用")
 		return err
 	}
+
+	p.ln = ln
+	httpSvr := &http.Server{
+		Addr:    p.addr,
+		Handler: p,
+	}
+
+	p.close = func() {
+		httpSvr.Close()
+	}
 	go func() {
-		err := http.Serve(ln, p)
-		if err != nil {
+		err := httpSvr.Serve(ln)
+		if err != nil && err != http.ErrServerClosed {
 			logrus.WithError(err).Fatal("WSServer Serve")
 			return
 		}
 	}()
 	return nil
+}
+
+func (p *WSServer) Close() {
+	p.close()
+}
+
+func (p *WSServer) ListenAddr() *net.TCPAddr {
+	return p.ln.Addr().(*net.TCPAddr)
 }
 
 func (p *WSServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {

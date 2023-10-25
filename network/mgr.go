@@ -5,6 +5,7 @@ import (
 	"github.com/0990/goserver/util"
 	"github.com/golang/protobuf/proto"
 	"github.com/sirupsen/logrus"
+	"net"
 	"reflect"
 	"sync"
 )
@@ -16,6 +17,9 @@ type Mgr struct {
 	onNew, onClose func(conn Session)
 	processor      *Processor
 	worker         service.Worker
+	wss            *WSServer
+
+	close func()
 }
 
 func NewMgr(wsAddr string, worker service.Worker) *Mgr {
@@ -40,7 +44,17 @@ func (p *Mgr) Run() {
 		c := NewClient(conn, p)
 		return c
 	})
+	p.wss = wss
 	wss.Start()
+	p.close = wss.Close
+}
+
+func (p *Mgr) ListenAddr() *net.TCPAddr {
+	return p.wss.ListenAddr()
+}
+
+func (p *Mgr) Close() {
+	p.close()
 }
 
 func (p *Mgr) Post(f func()) {

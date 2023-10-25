@@ -5,6 +5,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"io"
 	"runtime/debug"
+	"sync/atomic"
 	"time"
 )
 
@@ -20,6 +21,8 @@ type Worker interface {
 //TODO 这里的实现 chan如果塞满会阻塞进程，可对比参照github.com/davyxu/cellnet EventQueue实现，选方案
 type Work struct {
 	funChan chan func()
+
+	closed int32
 }
 
 func NewWorker() Worker {
@@ -29,7 +32,9 @@ func NewWorker() Worker {
 }
 
 func (p *Work) Post(f func()) {
-	p.funChan <- f
+	if atomic.LoadInt32(&p.closed) == 0 {
+		p.funChan <- f
+	}
 }
 
 func (p *Work) TryPost(f func(), maxLen int) {
@@ -59,7 +64,9 @@ func (p *Work) Run() {
 }
 
 func (p *Work) Close() {
-	close(p.funChan)
+	if atomic.CompareAndSwapInt32(&p.closed, 0, 1) {
+		close(p.funChan)
+	}
 }
 
 func (p *Work) Len() int {

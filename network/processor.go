@@ -70,7 +70,7 @@ func (p *Processor) RegisterSessionMsgHandler(msg proto.Message, handler MsgHand
 	p.msgID2Info[msgID] = msgInfo
 }
 
-func (p *Processor) Handle(msg proto.Message, client *Client) error {
+func (p *Processor) Handle(msg proto.Message, client Session) error {
 	msgID, msgType := util.ProtoHash(msg)
 	msgInfo, ok := p.msgID2Info[msgID]
 	if !ok {
